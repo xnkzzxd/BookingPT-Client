@@ -10,6 +10,7 @@
     <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/offline.css">
     <!-- Dari Layar Utama iPhone: layar penuh, tanpa bar Safari -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -54,7 +55,7 @@
 </head>
 <body>
 
-    <iframe title="XNK Personal Training" src="https://script.google.com/macros/s/AKfycbyVOm1Csc7UmCxPe3buHUkZkIaskguIRgT8dvTJw_aaTAX5UYY_-irjDi1X6vOD1BgJ/exec?view=public"></iframe>
+    <iframe id="app" title="XNK Personal Training" src="https://script.google.com/macros/s/AKfycbyVOm1Csc7UmCxPe3buHUkZkIaskguIRgT8dvTJw_aaTAX5UYY_-irjDi1X6vOD1BgJ/exec?view=public"></iframe>
     <div id="sa-probe" aria-hidden="true"></div>
 
     <script>
@@ -92,7 +93,8 @@
             function queue() { if (!raf) raf = requestAnimationFrame(send); }
             window.addEventListener('message', function (e) {
                 if (!appOrigin(e.origin) || !e.data) return;
-                if (e.data.xnk === 'host?') { target = e.source; targetOrigin = e.origin; send(); }
+                if (e.data.xnk === 'host?') { target = e.source; targetOrigin = e.origin; send(); if (window.XNKOfflineHost) window.XNKOfflineHost.appReady(); }
+                else if (/^offline-/.test(e.data.xnk || '')) { if (window.XNKOffline) window.XNKOffline.message(e); }
                 else if (e.data.xnk === 'theme' && /^#[0-9a-f]{6}$/i.test(e.data.color || '')) {
                     meta.setAttribute('content', e.data.color);
                     document.documentElement.style.background = e.data.color;
@@ -107,6 +109,11 @@
             }
         })();
     </script>
+
+    <!-- Tanpa sinyal: layar "Catat offline" dari salinan terakhir (offline.js), halaman ini disimpan oleh sw.js.
+         offline*.js, offline.css dan sw.js disalin dari repo XNK (tools/sync-offline.js); jangan ubah di sini. -->
+    <script src="/offline.js" data-mode="client"></script>
+    <script src="/offline-host.js"></script>
 
 </body>
 </html>
