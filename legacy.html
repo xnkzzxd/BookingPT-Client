@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+    <title>XNK Personal Training</title>
+    <meta name="description" content="Portal member XNK Personal Training: booking sesi, cek sisa sesi, dan jadwal latihan bersama coach.">
+    <meta name="theme-color" content="#0b0b0b">
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/offline.css">
+    <!-- Dari Layar Utama iPhone: layar penuh, tanpa bar Safari -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="XNK">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://script.googleusercontent.com">
+    <style>
+        /* Halaman ini tidak pernah bergulir atau memantul (tanpa tarik-muat-ulang
+           Safari, tanpa halaman bergeser setelah keyboard iPhone ditutup). */
+        html, body {
+            position: fixed;
+            inset: 0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            overscroll-behavior: none;
+            background: #f2f2f0;
+        }
+        /* width:1px + min-width:100% mencegah Safari iOS melebarkan iframe
+           mengikuti isinya lalu mengecilkan seluruh halaman. */
+        iframe {
+            position: fixed;
+            top: 0;
+            left: 0;
+            display: block;
+            width: 1px;
+            min-width: 100%;
+            height: 100%;
+            border: none;
+        }
+        /* Mengukur zona aman iPhone (poni, home bar) untuk aplikasi */
+        #sa-probe {
+            position: fixed;
+            top: 0;
+            left: 0;
+            visibility: hidden;
+            pointer-events: none;
+            padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+        }
+    </style>
+</head>
+<body>
+
+    <iframe id="app" title="XNK Personal Training" src="https://script.google.com/macros/s/AKfycbyVOm1Csc7UmCxPe3buHUkZkIaskguIRgT8dvTJw_aaTAX5UYY_-irjDi1X6vOD1BgJ/exec?view=public"></iframe>
+    <div id="sa-probe" aria-hidden="true"></div>
+
+    <script>
+        // Host bridge (iPhone/Safari). Inside an iframe iOS reports the safe area
+        // as 0 and hides the keyboard height, so this page measures both and sends
+        // plain numbers to the app. Only the app's own frame (googleusercontent.com)
+        // gets an answer; nothing private crosses this channel.
+        (function () {
+            var probe = document.getElementById('sa-probe');
+            var meta = document.querySelector('meta[name="theme-color"]');
+            var target = null, targetOrigin = '', raf = 0;
+            var ua = navigator.userAgent || '';
+            var ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            function appOrigin(o) { return /^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(o); }
+            function standalone() {
+                return navigator.standalone === true || !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+            }
+            function info() {
+                var cs = getComputedStyle(probe), vv = window.visualViewport;
+                // Keyboard = the part of the page below the visible area (not while pinch-zoomed).
+                var kb = vv && Math.abs(vv.scale - 1) < 0.01 ? document.documentElement.clientHeight - vv.height - vv.offsetTop : 0;
+                return {
+                    xnk: 'host', v: 1, ios: ios, standalone: standalone(), share: true,
+                    insets: { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0, b: parseFloat(cs.paddingBottom) || 0, l: parseFloat(cs.paddingLeft) || 0 },
+                    kb: Math.max(0, Math.round(kb))
+                };
+            }
+            function send() {
+                raf = 0;
+                var d = info();
+                // iOS can leave the page shifted after the keyboard closes: put it back.
+                if (!d.kb && (window.scrollY || window.scrollX)) window.scrollTo(0, 0);
+                if (target) try { target.postMessage(d, targetOrigin); } catch (e) {}
+            }
+            function queue() { if (!raf) raf = requestAnimationFrame(send); }
+            window.addEventListener('message', function (e) {
+                if (!appOrigin(e.origin) || !e.data) return;
+                if (e.data.xnk === 'host?') { target = e.source; targetOrigin = e.origin; send(); if (window.XNKOfflineHost) window.XNKOfflineHost.appReady(); }
+                else if (/^offline-/.test(e.data.xnk || '')) { if (window.XNKOffline) window.XNKOffline.message(e); }
+                else if (e.data.xnk === 'share' || e.data.xnk === 'copy') {
+                    // Share card (PNG or short video made in the app; up to 5 files). Only from the app frame that asked for host info.
+                    var kind = e.data.xnk, src = e.source, org = e.origin;
+                    var reply = function (m) { try { src.postMessage(m, org); } catch (x) {} };
+                    var list = Array.isArray(e.data.files) ? e.data.files : [{ blob: e.data.blob, name: e.data.name }];
+                    var okType = function (b) { return b && (b.type === 'image/png' || (kind === 'share' && (b.type === 'video/mp4' || b.type === 'video/webm'))); };
+                    if (src !== target || !list.length || list.length > 5) return reply({ xnk: kind + '-done', ok: false });
+                    for (var i = 0; i < list.length; i++) if (!list[i] || !okType(list[i].blob) || list[i].blob.size > (list[i].blob.type === 'image/png' ? 8 : 40) * 1024 * 1024) return reply({ xnk: kind + '-done', ok: false });
+                    if (kind === 'copy') {
+                        try { navigator.clipboard.write([new ClipboardItem({ 'image/png': list[0].blob })]).then(function () { reply({ xnk: 'copy-done', ok: true }); }, function () { reply({ xnk: 'copy-done', ok: false }); }); }
+                        catch (x) { reply({ xnk: 'copy-done', ok: false }); }
+                        return;
+                    }
+                    var files = list.map(function (f, n) {
+                        var ext = f.blob.type === 'image/png' ? 'png' : f.blob.type === 'video/mp4' ? 'mp4' : 'webm';
+                        var name = /^[\w.-]{1,60}$/.test(f.name || '') ? f.name : 'xnk-' + (n + 1) + '.' + ext;
+                        return new File([f.blob], name, { type: f.blob.type });
+                    });
+                    if (navigator.canShare && navigator.canShare({ files: files })) {
+                        navigator.share({ files: files }).then(function () { reply({ xnk: 'share-done', ok: true, how: 'share' }); }, function (er) { reply({ xnk: 'share-done', ok: !!er && er.name === 'AbortError', how: 'share' }); });
+                    } else reply({ xnk: 'share-done', ok: false });
+                }
+                else if (e.data.xnk === 'theme' && /^#[0-9a-f]{6}$/i.test(e.data.color || '')) {
+                    meta.setAttribute('content', e.data.color);
+                    document.documentElement.style.background = e.data.color;
+                    document.body.style.background = e.data.color;
+                }
+            });
+            window.addEventListener('resize', queue);
+            window.addEventListener('orientationchange', function () { setTimeout(queue, 300); });
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', queue);
+                window.visualViewport.addEventListener('scroll', queue);
+            }
+        })();
+    </script>
+
+    <!-- Tanpa sinyal: layar "Catat offline" dari salinan terakhir (offline.js), halaman ini disimpan oleh sw.js.
+         offline*.js, offline.css dan sw.js disalin dari repo XNK (tools/sync-offline.js); jangan ubah di sini. -->
+    <script src="/offline.js" data-mode="client"></script>
+    <!-- legacy.html: no offline-host.js, it would register /sw.js over the app worker (sw-app.js) -->
+
+</body>
+</html>
