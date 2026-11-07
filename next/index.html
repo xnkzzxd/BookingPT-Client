@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover">
+  <script src="config.js"></script>
+  <script src="host-local.1c9061bba4.js"></script>
+  <link rel="stylesheet" href="offline.b44e4c2f5c.css">
+  <script>document.write('<script src="offline.034c8628e6.js" data-mode="' + (/[?&](view=public|k=)/.test(location.search) || (window.XNK_CONFIG && window.XNK_CONFIG.site === 'client') ? 'client' : 'coach') + '"><\/script>');</script>
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+  <link rel="icon" href="https://xnk.my.id/favicon.ico">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b0b0b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="XNK">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" type="image/png" sizes="192x192" href="https://xnk.my.id/icon-192.png">
+  <link rel="apple-touch-icon" href="https://xnk.my.id/apple-touch-icon.png">
+  <script>if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) location.replace("https://" + location.host + location.pathname + location.search);</script>
+  <title>XNK Personal Training</title>
+  <script>
+    // Terapkan tema pilihan sebelum halaman digambar (tanpa kedip).
+    (function () {
+      try {
+        var t = localStorage.getItem('xnk_theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@1.48.0/dist/umd/lucide.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-93SRTYH3SG"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-93SRTYH3SG');
+  </script>
+
+  <link rel="stylesheet" href="theme.b0a11de56a.css">
+</head>
+<body>
+
+  <!-- Layar awal -->
+  <div class="splash" id="global-loader" role="status" aria-live="polite">
+    <span class="logo-mark" aria-hidden="true"></span>
+    <div class="splash-bar"></div>
+    <p>XNK Personal Training</p>
+  </div>
+
+  <div class="app" id="app">
+    <!-- Sidebar (tablet & desktop) -->
+    <aside class="sidebar" id="sidebar" aria-label="Navigasi utama">
+      <div class="brand">
+        <span class="avatar ink" style="border-radius:14px;width:40px;height:40px"><span class="logo-mark" style="width:20px;height:19px"></span></span>
+        <span class="brand-text">
+          <span class="brand-name">XNK</span><br>
+          <span class="brand-sub">Personal Training</span>
+        </span>
+      </div>
+      <nav class="nav-list" id="side-nav"></nav>
+      <div class="sidebar-foot" id="side-foot"></div>
+    </aside>
+
+    <div class="main-col">
+      <header class="topbar" id="topbar">
+        <div class="topbar-brand">
+          <span class="avatar ink" style="border-radius:12px;width:36px;height:36px"><span class="logo-mark" style="width:18px;height:17px"></span></span>
+        </div>
+        <h1 class="topbar-title" id="page-title">XNK</h1>
+        <div class="topbar-actions" id="topbar-actions"></div>
+      </header>
+
+      <main class="main" id="main-scroll-area">
+        <div class="page">
+          <!-- ADMIN -->
+          <section class="view hide" id="view-dashboard" aria-label="Dashboard"></section>
+          <section class="view hide" id="view-calendar" aria-label="Jadwal"></section>
+          <section class="view hide" id="view-clients" aria-label="Klien"></section>
+          <section class="view hide" id="view-coaches" aria-label="Coach"></section>
+          <section class="view hide" id="view-finance" aria-label="Keuangan"></section>
+          <section class="view hide" id="view-content" aria-label="Konten"></section>
+          <section class="view hide" id="view-settings" aria-label="Pengaturan"></section>
+          <!-- PORTAL KLIEN -->
+          <section class="view hide" id="view-public-login" aria-label="Masuk member"></section>
+          <section class="view hide" id="view-public-dashboard" aria-label="Beranda"></section>
+          <section class="view hide" id="view-public-catalog" aria-label="Paket"></section>
+          <section class="view hide" id="view-public-coaches" aria-label="Coach"></section>
+          <section class="view hide" id="view-public-progress" aria-label="Progres"></section>
+          <section class="view hide" id="view-public-program" aria-label="Program"></section>
+          <section class="view hide" id="view-public-info" aria-label="Info dan tips"></section>
+          <section class="view hide" id="view-public-more" aria-label="Lainnya"></section>
+          <section class="view hide" id="view-public-share" aria-label="Kartu saya"></section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Panel detail: kolom ke-3 di desktop, laci di tablet, halaman penuh di HP -->
+    <div class="detail-backdrop" id="detail-backdrop" onclick="window.closeDetail()"></div>
+    <aside class="detail" id="detail-panel" aria-hidden="true" aria-labelledby="detail-title">
+      <div class="detail-head">
+        <button type="button" class="icon-btn plain nav-back" onclick="window.closeDetail()" aria-label="Tutup detail"><span class="only-mobile-detail" style="display:inline-flex"><i data-lucide="arrow-left"></i></span><span class="only-desktop-detail"><i data-lucide="x"></i></span></button>
+        <h2 class="detail-title grow truncate" id="detail-title"></h2>
+        <div class="row" id="detail-actions"></div>
+      </div>
+      <div class="detail-body" id="detail-body"></div>
+    </aside>
+  </div>
+
+  <!-- Bar bawah melayang (HP) -->
+  <!-- Bar simpan Pengaturan (di luar halaman supaya posisinya tetap di layar) -->
+  <div class="save-bar hide" id="settings-savebar" role="region" aria-label="Simpan perubahan">
+    <span class="sb-msg">Belum disimpan</span>
+    <span class="sb-actions">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="window.settingsCancel()">Batal</button>
+      <button type="button" class="btn btn-dark btn-sm" id="settings-save-btn" onclick="window.settingsSave()"><i data-lucide="save"></i> Simpan</button>
+    </span>
+  </div>
+
+  <nav class="tabbar" id="tabbar" aria-label="Navigasi"></nav>
+
+  <!-- iPhone di Safari biasa: ajakan sekali untuk memasang ke Layar Utama (Fase N) -->
+  <div class="a2hs hide" id="a2hs" role="region" aria-label="Pasang di Layar Utama">
+    <div class="a2hs-row">
+      <span class="a2hs-ico"><i data-lucide="square-plus"></i></span>
+      <p>Pasang XNK di Layar Utama supaya terbuka penuh tanpa bar Safari: ketuk <i data-lucide="share" class="share-ico"></i> <b>Bagikan</b>, lalu <b>Tambahkan ke Layar Utama</b>.</p>
+    </div>
+    <div class="a2hs-actions">
+      <button type="button" class="btn btn-on-ink-ghost btn-sm" onclick="window.a2hsClose(false)">Nanti</button>
+      <button type="button" class="btn btn-on-ink btn-sm" onclick="window.a2hsClose(true)">Mengerti</button>
+    </div>
+  </div>
+
+  <!-- Mode latihan (Fase M): layar penuh untuk coach dan klien -->
+  <div class="wl hide" id="wl-screen" role="dialog" aria-modal="true" aria-labelledby="wl-title">
+    <header class="wl-top">
+      <button type="button" class="icon-btn plain" onclick="window.wlClose()" aria-label="Kecilkan (latihan tetap tersimpan sebagai draf)"><i data-lucide="chevron-down"></i></button>
+      <div class="wl-head"><h2 class="wl-title truncate" id="wl-title">Log latihan</h2><p class="wl-sub num hide" id="wl-sub"></p></div>
+      <button type="button" class="icon-btn plain" onclick="window.wlTimerPick()" aria-label="Timer istirahat"><i data-lucide="timer"></i></button>
+      <button type="button" class="icon-btn plain" id="wl-more-btn" onclick="window.wlTopMenu()" aria-label="Menu latihan: rutinitas, tanggal, pengaturan, buang"><i data-lucide="more-vertical"></i></button>
+      <button type="button" class="btn btn-primary btn-sm" id="wl-finish-btn" onclick="window.wlFinish()">Selesai</button>
+    </header>
+    <div class="wl-stats" id="wl-stats" aria-live="off"></div>
+    <div class="wl-body" id="wl-body"></div>
+    <div class="wl-rest hide" id="wl-rest" role="timer" aria-live="off"></div>
+  </div>
+  <!-- Latihan berjalan / belum terkirim: bar tipis di atas tab bar -->
+  <div class="wl-resume hide" id="wl-resume" role="region" aria-label="Latihan berjalan"></div>
+
+  <!-- Panduan klien baru (portal): layar gelap, satu tombol disorot -->
+  <div class="guide-layer hide" id="guide-layer" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+    <svg class="guide-scrim" id="guide-scrim" aria-hidden="true" preserveAspectRatio="none"><path id="guide-hole" fill-rule="evenodd" d=""></path></svg>
+    <div class="guide-block" id="guide-block"></div>
+    <div class="guide-spot" id="guide-spot"></div>
+    <div class="guide-tip" id="guide-tip"></div>
+  </div>
+
+  <!-- Login PIN admin -->
+  <div class="auth hide" id="admin-login" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
+    <form class="auth-form" onsubmit="window.handleAdminLogin(event)" novalidate>
+      <div class="auth-logo"><span class="logo-mark"></span></div>
+      <p class="eyebrow">Panel PT</p>
+      <h1 class="auth-title" id="admin-login-title">Masuk ke panel</h1>
+      <p class="auth-sub">Masukkan PIN admin untuk mengelola jadwal, klien, dan coach.</p>
+      <div class="field">
+        <label class="label" for="admin-pin">PIN admin</label>
+        <input class="input pin-input" type="password" id="admin-pin" inputmode="numeric" autocomplete="current-password" maxlength="12" required placeholder="••••••">
+      </div>
+      <p id="admin-login-error" class="form-error hide" role="alert" style="margin-top:12px"></p>
+      <button type="submit" id="admin-login-btn" class="btn btn-primary btn-lg btn-block" style="margin-top:20px">
+        Masuk <i data-lucide="arrow-right"></i>
+      </button>
+      <p class="hint" style="margin-top:18px;text-align:center">Tetap masuk di perangkat ini selama 30 hari.</p>
+    </form>
+    <div class="auth-art" aria-hidden="true">
+      <div class="art-grid"></div>
+      <div class="art-orb o3"></div>
+      <div class="art-orb o2"></div>
+      <div class="art-orb o1"></div>
+      <span class="logo-mark art-logo"></span>
+      <div class="art-caption"><b>XNK Personal Training</b><span>Jadwal, klien, dan coach dalam satu tempat.</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== SHEET / MODAL ===================== -->
+  <div class="layer hide" id="sheet-layer">
+    <div class="backdrop" onclick="window.closeModal()"></div>
+
+    <!-- Aksi cepat (+) admin -->
+    <div class="sheet sm hide" id="sheet-quick-client" role="dialog" aria-modal="true" aria-labelledby="sheet-quick-client-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-quick-client-title">Mau apa?</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body">
+        <div class="action-grid">
+          <button type="button" class="action-tile" onclick="window.clientQuick('booking')"><span class="at-icon"><i data-lucide="calendar-plus"></i></span>Booking</button>
+          <button type="button" class="action-tile" onclick="window.clientQuick('workout')"><span class="at-icon"><i data-lucide="dumbbell"></i></span>Mulai latihan</button>
+          <button type="button" class="action-tile" onclick="window.clientQuick('past')"><span class="at-icon"><i data-lucide="calendar-check"></i></span>Catat yang lewat</button>
+        </div>
+      </div>
+    </div>
+    <div class="sheet sm hide" id="sheet-quick" role="dialog" aria-modal="true" aria-labelledby="sheet-quick-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-quick-title">Tambah cepat</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body">
+        <div class="action-grid">
+          <button type="button" class="action-tile" onclick="window.quickAction('booking')"><span class="at-icon"><i data-lucide="calendar-plus"></i></span>Booking</button>
+          <button type="button" class="action-tile" onclick="window.quickAction('client')"><span class="at-icon"><i data-lucide="user-plus"></i></span>Klien</button>
+          <button type="button" class="action-tile" onclick="window.quickAction('coach')"><span class="at-icon"><i data-lucide="dumbbell"></i></span>Coach</button>
+          <button type="button" class="action-tile" onclick="window.quickAction('content')"><span class="at-icon"><i data-lucide="megaphone"></i></span>Konten</button>
+          <button type="button" class="action-tile fin-tile" onclick="window.finQuick('payment')"><span class="at-icon"><i data-lucide="banknote"></i></span>Pembayaran</button>
+          <button type="button" class="action-tile fin-tile" onclick="window.finQuick('expense')"><span class="at-icon"><i data-lucide="receipt"></i></span>Pengeluaran</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pengaturan -->
+    <div class="sheet sm hide" id="sheet-settings" role="dialog" aria-modal="true" aria-labelledby="sheet-settings-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-settings-title">Pengaturan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack">
+        <div class="field">
+          <span class="label">Tema tampilan</span>
+          <div class="seg" id="theme-seg" role="radiogroup" aria-label="Tema"></div>
+        </div>
+        <button type="button" class="btn btn-danger btn-block" id="settings-logout" onclick="window.logoutCurrent()"><i data-lucide="log-out"></i> Keluar</button>
+      </div>
+    </div>
+
+    <div class="sheet hide" id="sheet-my-profile" role="dialog" aria-modal="true" aria-labelledby="my-profile-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="my-profile-title">Profil saya</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:16px" id="my-profile-body"></div>
+    </div>
+
+    <div class="sheet hide" id="sheet-coach-profile" role="dialog" aria-modal="true" aria-labelledby="coach-sheet-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="coach-sheet-title">Profil coach</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body" id="coach-sheet-body"></div>
+    </div>
+
+    <!-- Keuangan (Fase H) -->
+    <div class="sheet tall hide" id="sheet-fin-payment" role="dialog" aria-modal="true" aria-labelledby="sheet-fin-payment-t">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-fin-payment-t"><span id="fin-pay-title">Keuangan</span></h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-fin-pay" onsubmit="window.finPaySave(event)" novalidate>
+        <div class="field" id="fin-pay-bill-wrap"><label class="label" for="fin-pay-bill">Tagihan</label><select class="select" id="fin-pay-bill"></select></div>
+        <div class="field"><label class="label" for="fin-pay-amount">Jumlah</label><div class="input-affix"><span class="affix">Rp</span><input class="input num" type="text" inputmode="numeric" id="fin-pay-amount" autocomplete="off" placeholder="100.000" oninput="window.finFmt(this)"></div></div>
+        <div class="field"><span class="label">Metode</span><div class="chips" id="fin-pay-method" style="flex-wrap:wrap"></div></div>
+        <div class="field" id="fin-pay-cat-wrap"><span class="label">Kategori</span><div class="chips" id="fin-pay-cat" style="flex-wrap:wrap"></div></div>
+        <div class="field"><label class="label" for="fin-pay-date">Tanggal</label><input class="input" type="date" id="fin-pay-date"></div>
+        <div class="field"><label class="label" for="fin-pay-note">Catatan</label><input class="input" type="text" id="fin-pay-note" maxlength="300" autocomplete="off"></div>
+        <div class="field"><span class="label">Bukti</span><label class="btn btn-outline btn-block" style="cursor:pointer"><span id="fin-pay-proof-lbl">Tambah foto bukti</span><input type="file" accept="image/*" id="fin-pay-proof" data-lbl="fin-pay-proof-lbl" onchange="window.finProofChange(this)" style="display:none"></label><button type="button" class="link-btn hide" id="fin-pay-view">Lihat bukti tersimpan</button><div id="fin-pay-proof-box"></div></div>
+        <p class="hint err-msg" id="fin-pay-err" role="alert" style="display:block"></p>
+        <button type="button" class="btn btn-danger btn-block hide" id="fin-pay-archive" onclick="window.finPayArchive()">Arsipkan pembayaran</button>
+      </form>
+      <div class="sheet-foot"><button type="submit" form="form-fin-pay" class="btn btn-primary btn-lg btn-block" id="fin-pay-save">Simpan</button></div>
+    </div>
+
+    <div class="sheet tall hide" id="sheet-fin-expense" role="dialog" aria-modal="true" aria-labelledby="sheet-fin-expense-t">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-fin-expense-t"><span id="fin-exp-title">Keuangan</span></h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-fin-exp" onsubmit="window.finExpSave(event)" novalidate>
+        <div class="field"><label class="label" for="fin-exp-amount">Jumlah</label><div class="input-affix"><span class="affix">Rp</span><input class="input num" type="text" inputmode="numeric" id="fin-exp-amount" autocomplete="off" placeholder="100.000" oninput="window.finFmt(this)"></div></div>
+        <div class="field"><span class="label">Kategori</span><div class="chips" id="fin-exp-cat" style="flex-wrap:wrap"></div></div>
+        <div class="field"><span class="label">Metode</span><div class="chips" id="fin-exp-method" style="flex-wrap:wrap"></div></div>
+        <div class="field"><label class="label" for="fin-exp-date">Tanggal</label><input class="input" type="date" id="fin-exp-date"></div>
+        <div class="field"><label class="label" for="fin-exp-note">Catatan</label><input class="input" type="text" id="fin-exp-note" maxlength="300" autocomplete="off"></div>
+        <div class="field"><span class="label">Bukti</span><label class="btn btn-outline btn-block" style="cursor:pointer"><span id="fin-exp-proof-lbl">Tambah foto nota</span><input type="file" accept="image/*" id="fin-exp-proof" data-lbl="fin-exp-proof-lbl" onchange="window.finProofChange(this)" style="display:none"></label><button type="button" class="link-btn hide" id="fin-exp-view">Lihat bukti tersimpan</button><div id="fin-exp-proof-box"></div></div>
+        <p class="hint err-msg" id="fin-exp-err" role="alert" style="display:block"></p>
+        <button type="button" class="btn btn-danger btn-block hide" id="fin-exp-archive" onclick="window.finExpArchive()">Arsipkan pengeluaran</button>
+      </form>
+      <div class="sheet-foot"><button type="submit" form="form-fin-exp" class="btn btn-primary btn-lg btn-block" id="fin-exp-save">Simpan</button></div>
+    </div>
+
+    <div class="sheet tall hide" id="sheet-fin-bill" role="dialog" aria-modal="true" aria-labelledby="sheet-fin-bill-t">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-fin-bill-t"><span id="fin-bill-title">Keuangan</span></h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-fin-bill" onsubmit="window.finBillSave(event)" novalidate>
+        <div class="field"><label class="label" for="fin-bill-total">Total tagihan</label><div class="input-affix"><span class="affix">Rp</span><input class="input num" type="text" inputmode="numeric" id="fin-bill-total" oninput="window.finFmt(this)"></div></div>
+        <div class="field"><label class="label" for="fin-bill-reason">Alasan (wajib kalau total diubah)</label><input class="input" type="text" id="fin-bill-reason" maxlength="200" autocomplete="off"></div>
+        <div class="field"><label class="label" for="fin-bill-discount">Diskon</label><div class="input-affix"><span class="affix">Rp</span><input class="input num" type="text" inputmode="numeric" id="fin-bill-discount" oninput="window.finFmt(this)"></div></div>
+        <div class="field"><label class="label" for="fin-bill-note">Catatan</label><input class="input" type="text" id="fin-bill-note" maxlength="300" autocomplete="off"></div>
+        <p class="hint err-msg" id="fin-bill-err" role="alert" style="display:block"></p>
+        <button type="button" class="btn btn-danger btn-block" onclick="window.finBillArchive()">Arsipkan tagihan</button>
+      </form>
+      <div class="sheet-foot"><button type="submit" form="form-fin-bill" class="btn btn-primary btn-lg btn-block" id="fin-bill-save">Simpan</button></div>
+    </div>
+
+    <!-- Notifikasi booking baru -->
+    <div class="sheet sm hide" id="modal-notifications" role="dialog" aria-modal="true" aria-labelledby="notif-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="notif-title">Booking baru</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body"><div class="list" id="notification-list"></div></div>
+      <div class="sheet-foot" id="notification-action">
+        <button type="button" class="btn btn-secondary" onclick="window.closeModal()">Nanti</button>
+        <button type="button" class="btn btn-primary" onclick="window.markNotificationsRead()"><i data-lucide="check"></i> Tandai dibaca</button>
+      </div>
+    </div>
+
+    <!-- Tambah klien -->
+    <div class="sheet hide" id="modal-add-member" role="dialog" aria-modal="true" aria-labelledby="add-member-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="add-member-title">Klien baru</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-add-member" onsubmit="window.submitAddMember(event)">
+        <div class="field"><label class="label" for="member-name">Nama lengkap</label><input class="input" type="text" id="member-name" required autocomplete="off"></div>
+        <div class="field"><label class="label" for="member-phone">Nomor WhatsApp</label>
+          <div class="input-affix"><span class="affix">+62</span><input class="input" type="tel" inputmode="numeric" id="member-phone" required placeholder="81234567890"></div>
+          <span class="hint">Nomor yang sudah terdaftar akan diperpanjang paketnya.</span>
+        </div>
+        <div class="field"><label class="label" for="member-goal">Tujuan latihan</label><input class="input" type="text" id="member-goal" placeholder="Contoh: turun berat badan"></div>
+        <div class="field"><span class="label">Paket</span>
+          <div class="pkg-wrap" id="member-package-wrap">
+            <input type="hidden" id="member-package" value="">
+            <button type="button" class="input pkg-trigger" onclick="window.togglePackageDropdown('member')" aria-haspopup="listbox"><span id="member-package-label" class="truncate">Tanpa paket / custom</span><i data-lucide="chevron-down"></i></button>
+            <div class="pkg-panel hide" id="member-package-panel">
+              <div class="pkg-search"><input class="input" type="text" id="member-package-search" oninput="window.filterPackageOptions('member')" placeholder="Cari paket…"></div>
+              <div class="pkg-list" id="member-package-list" role="listbox"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field"><label class="label" for="member-coach">Coach utama</label><select class="select" id="member-coach"></select></div>
+        <div class="two">
+          <div class="field"><label class="label" for="member-total-sessions">Total sesi</label><input class="input num" type="number" id="member-total-sessions" required value="10" min="1"></div>
+          <div class="field"><label class="label" for="member-used-sessions">Sesi terpakai</label><input class="input num" type="number" id="member-used-sessions" required value="0" min="0"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan klien</button>
+      </form>
+    </div>
+
+    <!-- Ubah klien -->
+    <div class="sheet hide" id="modal-edit-profile" role="dialog" aria-modal="true" aria-labelledby="edit-member-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="edit-member-title">Ubah data klien</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-edit-profile" onsubmit="window.submitEditProfile(event)">
+        <div class="field"><label class="label" for="edit-member-name">Nama lengkap</label><input class="input" type="text" id="edit-member-name" required></div>
+        <div class="field"><label class="label" for="edit-member-phone">Nomor WhatsApp</label>
+          <div class="input-affix"><span class="affix">+</span><input class="input" type="tel" inputmode="numeric" id="edit-member-phone" required></div>
+        </div>
+        <div class="field"><label class="label" for="edit-member-goal">Tujuan latihan</label><input class="input" type="text" id="edit-member-goal"></div>
+        <div class="field"><span class="label">Paket</span>
+          <div class="pkg-wrap" id="edit-member-package-wrap">
+            <input type="hidden" id="edit-member-package" value="">
+            <button type="button" class="input pkg-trigger" onclick="window.togglePackageDropdown('edit-member')" aria-haspopup="listbox"><span id="edit-member-package-label" class="truncate">Tanpa paket / custom</span><i data-lucide="chevron-down"></i></button>
+            <div class="pkg-panel hide" id="edit-member-package-panel">
+              <div class="pkg-search"><input class="input" type="text" id="edit-member-package-search" oninput="window.filterPackageOptions('edit-member')" placeholder="Cari paket…"></div>
+              <div class="pkg-list" id="edit-member-package-list" role="listbox"></div>
+            </div>
+          </div>
+        </div>
+        <div class="field"><label class="label" for="edit-member-coach">Coach utama</label><select class="select" id="edit-member-coach"></select></div>
+        <div class="two">
+          <div class="field"><label class="label" for="edit-member-total">Total sesi</label><input class="input num" type="number" id="edit-member-total" required min="1"></div>
+          <div class="field"><label class="label" for="edit-member-used">Sesi terpakai</label><input class="input num" type="number" id="edit-member-used" required min="0"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan perubahan</button>
+      </form>
+    </div>
+
+    <!-- PR (Task): tambah / ubah -->
+    <div class="sheet hide" id="modal-task" role="dialog" aria-modal="true" aria-labelledby="task-sheet-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <div class="grow"><h2 class="sheet-title" id="task-sheet-title">Tambah PR</h2><p class="li-sub" id="task-sheet-client"></p></div>
+        <button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button>
+      </div>
+      <form class="sheet-body form-grid" id="form-task" onsubmit="window.submitTaskForm(event)" novalidate>
+        <div class="field" id="task-tpl-field"><span class="label">Template <span class="li-sub">(opsional)</span></span><div id="task-tpl-list" style="display:flex;flex-wrap:wrap;gap:8px" aria-label="Template PR"></div></div>
+        <div class="field"><label class="label" for="task-title">Judul</label><input class="input" type="text" id="task-title" maxlength="80" placeholder="Contoh: Catat makan 3 hari" autocomplete="off"></div>
+        <div class="field"><label class="label" for="task-desc">Deskripsi <span class="li-sub">(opsional)</span></label><textarea class="textarea" id="task-desc" maxlength="500" placeholder="Petunjuk untuk klien"></textarea></div>
+        <div class="field"><span class="label">Kategori</span><div id="task-cat-chips" style="display:flex;flex-wrap:wrap;gap:8px" role="radiogroup" aria-label="Kategori"></div></div>
+        <div class="field"><label class="label" for="task-due">Tenggat <span class="li-sub">(opsional)</span></label><input class="input" type="date" id="task-due"></div>
+        <div class="field"><span class="label">Ulangi</span><div id="task-repeat-chips" style="display:flex;flex-wrap:wrap;gap:8px" role="radiogroup" aria-label="Pengulangan"></div>
+          <p class="li-sub" id="task-repeat-hint">PR berulang wajib punya tenggat awal.</p></div>
+        <button type="button" class="btn btn-secondary btn-block" id="task-save-tpl" onclick="window.saveTaskAsTemplate()">Simpan sebagai template</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="task-submit">Simpan PR</button>
+      </form>
+    </div>
+
+    <!-- PR-ku: selesaikan dengan catatan -->
+    <div class="sheet hide" id="modal-task-done" role="dialog" aria-modal="true" aria-labelledby="task-done-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <div class="grow"><h2 class="sheet-title" id="task-done-title">Selesaikan PR</h2><p class="li-sub" id="task-done-name"></p></div>
+        <button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button>
+      </div>
+      <form class="sheet-body form-grid" id="form-task-done" onsubmit="window.submitTaskDone(event)">
+        <div class="field"><label class="label" for="task-done-note">Catatan untuk coach <span class="li-sub">(opsional)</span></label><textarea class="textarea" id="task-done-note" maxlength="300" placeholder="Bagaimana rasanya? Ada kendala?"></textarea></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="task-done-submit">Tandai selesai</button>
+      </form>
+    </div>
+
+    <!-- Booking / ubah / reschedule jadwal -->
+    <div class="sheet hide" id="modal-edit-schedule" role="dialog" aria-modal="true" aria-labelledby="modal-sch-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head">
+        <div class="grow">
+          <h2 class="sheet-title" id="modal-sch-title">Booking</h2>
+          <p class="li-sub" id="edit-sch-client-name"></p>
+        </div>
+        <button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button>
+      </div>
+      <form class="sheet-body form-grid" id="form-edit-schedule" onsubmit="window.submitScheduleForm(event)">
+        <div class="field hide" id="sch-member-field">
+          <label class="label" for="sch-member">Klien</label>
+          <select class="select" id="sch-member"></select>
+        </div>
+        <div class="field hide" id="sch-coach-field">
+          <label class="label" for="sch-coach">Coach</label>
+          <select class="select" id="sch-coach"></select>
+        </div>
+        <div class="two">
+          <div class="field"><label class="label" for="edit-sch-date">Tanggal</label><input class="input" type="date" id="edit-sch-date" required onchange="window.onSchFieldChange()"></div>
+          <div class="field"><label class="label" for="edit-sch-time">Jam</label><input class="input" type="time" id="edit-sch-time" required step="900" oninput="window.onSchFieldChange()" onchange="window.onSchFieldChange()" aria-describedby="edit-sch-time-hint"><p class="hint" id="edit-sch-time-hint" aria-live="polite"></p></div>
+        </div>
+        <div class="field"><label class="label" for="edit-sch-duration">Durasi</label>
+          <select class="select" id="edit-sch-duration" onchange="window.onSchFieldChange()">
+            <option value="60">60 menit</option>
+            <option value="90">90 menit</option>
+            <option value="120">120 menit</option>
+          </select>
+        </div>
+        <div id="recurring-toggle-wrap" class="card-flat stack" style="gap:12px">
+          <div class="row-between">
+            <div><p class="li-title">Jadwal berulang</p><p class="li-sub">Buat beberapa sesi sekaligus tiap minggu</p></div>
+            <label class="toggle"><input type="checkbox" id="edit-sch-recurring-toggle" onchange="window.toggleRecurringOptions()" aria-label="Jadwal berulang"><span></span></label>
+          </div>
+          <div id="recurring-options" class="stack hide" style="gap:12px">
+            <div class="field"><span class="label">Hari latihan</span>
+              <div class="day-picker" id="recurring-weekday-picker">
+                <button type="button" class="recurring-day-btn" data-day="1" onclick="window.toggleRecurringWeekday(this)">Sen</button>
+                <button type="button" class="recurring-day-btn" data-day="2" onclick="window.toggleRecurringWeekday(this)">Sel</button>
+                <button type="button" class="recurring-day-btn" data-day="3" onclick="window.toggleRecurringWeekday(this)">Rab</button>
+                <button type="button" class="recurring-day-btn" data-day="4" onclick="window.toggleRecurringWeekday(this)">Kam</button>
+                <button type="button" class="recurring-day-btn" data-day="5" onclick="window.toggleRecurringWeekday(this)">Jum</button>
+                <button type="button" class="recurring-day-btn" data-day="6" onclick="window.toggleRecurringWeekday(this)">Sab</button>
+                <button type="button" class="recurring-day-btn" data-day="0" onclick="window.toggleRecurringWeekday(this)">Min</button>
+              </div>
+            </div>
+            <div class="field"><label class="label" for="edit-sch-recurring-occurrences">Jumlah sesi</label><input class="input num" type="number" id="edit-sch-recurring-occurrences" min="2" max="52" value="4" inputmode="numeric" oninput="window.onSchFieldChange()"></div>
+          </div>
+        </div>
+        <div class="field"><label class="label" for="edit-sch-notes">Catatan</label><textarea class="textarea" id="edit-sch-notes" rows="2" placeholder="Opsional, mis. fokus latihan"></textarea></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="sch-submit-btn">Simpan</button>
+      </form>
+    </div>
+
+    <!-- Daftar paket (registrasi dari katalog) -->
+    <div class="sheet hide" id="modal-public-register" role="dialog" aria-modal="true" aria-labelledby="reg-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="reg-title">Daftar paket</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitRegistration(event)">
+        <div class="card-ink" style="padding:18px">
+          <p class="eyebrow" id="reg-status-label"></p>
+          <p class="section-title" style="margin-top:6px" id="reg-package-name"></p>
+          <p class="pkg-price num" style="margin-top:6px" id="reg-package-price"></p>
+        </div>
+        <input type="hidden" id="reg-data-package-id"><input type="hidden" id="reg-data-package"><input type="hidden" id="reg-data-sessions"><input type="hidden" id="reg-data-price"><input type="hidden" id="reg-data-type">
+        <div class="field"><label class="label" for="reg-name">Nama lengkap</label><input class="input" type="text" id="reg-name" required autocomplete="name"></div>
+        <div class="field"><label class="label" for="reg-phone">Nomor WhatsApp</label><div class="input-affix"><span class="affix">+62</span><input class="input" type="tel" inputmode="numeric" id="reg-phone" required placeholder="81234567890" autocomplete="tel"></div></div>
+        <div class="field hide" id="reg-coach-field"><label class="label" for="reg-coach">Coach</label><select class="select" id="reg-coach"></select></div>
+        <div class="field"><label class="label" for="reg-goal">Tujuan latihan</label><input class="input" type="text" id="reg-goal" required placeholder="Contoh: lebih bugar & kuat"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Daftar &amp; lanjut ke WhatsApp</button>
+        <p class="hint" style="text-align:center">Pembayaran dikonfirmasi coach lewat WhatsApp.</p>
+      </form>
+    </div>
+
+    <!-- Tambah / ubah coach -->
+    <div class="sheet hide" id="modal-add-coach" role="dialog" aria-modal="true" aria-labelledby="coach-modal-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="coach-modal-title">Coach baru</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitAddCoach(event)">
+        <input type="hidden" id="coach-edit-id" value="">
+        <div class="row" style="gap:16px">
+          <span class="avatar xl">
+            <img id="coach-photo-preview" class="hide" alt="">
+            <i data-lucide="camera" id="coach-photo-preview-fallback"></i>
+          </span>
+          <div class="stack" style="gap:6px">
+            <label class="btn btn-secondary btn-sm" for="coach-photo-file"><i data-lucide="image-plus"></i> Pilih foto</label>
+            <input type="file" id="coach-photo-file" accept="image/*" class="sr-only" onchange="window.previewCoachPhoto(event)">
+            <span class="hint">JPG/PNG, dipotong persegi.</span>
+          </div>
+        </div>
+        <div class="field"><label class="label" for="coach-name">Nama</label><input class="input" id="coach-name" type="text" required></div>
+        <div class="field"><label class="label" for="coach-phone">Nomor WhatsApp</label><input class="input" id="coach-phone" type="tel" inputmode="numeric" required placeholder="6281234567890"></div>
+        <div class="field"><label class="label" for="coach-specialty">Spesialisasi</label><input class="input" id="coach-specialty" type="text" maxlength="200" placeholder="Fat loss, strength training"></div>
+        <div class="field"><label class="label" for="coach-headline">Headline</label><input class="input" id="coach-headline" type="text" maxlength="80" placeholder="Satu baris tentang kamu"></div>
+        <div class="field"><label class="label" for="coach-experience">Pengalaman</label><input class="input" id="coach-experience" type="text" placeholder="5+ tahun"></div>
+        <div class="field"><label class="label" for="coach-bio">Bio</label><textarea class="textarea" id="coach-bio" rows="3" maxlength="600" placeholder="Pengalaman & keahlian coach"></textarea></div>
+        <div class="field"><label class="label" for="coach-certs">Sertifikasi</label><input class="input" id="coach-certs" type="text" placeholder="Pisahkan dengan koma"></div>
+        <div class="field"><label class="label" for="coach-achievements">Prestasi</label><input class="input" id="coach-achievements" type="text" placeholder="Pisahkan dengan koma"></div>
+        <div class="field"><label class="label" for="coach-location">Lokasi</label><input class="input" id="coach-location" type="text" maxlength="60" placeholder="Purwokerto"></div>
+        <div class="field"><label class="label" for="coach-instagram">Instagram</label><input class="input" id="coach-instagram" type="text" maxlength="40" autocapitalize="none" placeholder="username"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan coach</button>
+      </form>
+    </div>
+
+    <div class="sheet hide" id="modal-coach-hours" role="dialog" aria-modal="true" aria-labelledby="coach-hours-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="coach-hours-title">Jam kerja</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px">
+        <p class="hint">Hari tanpa jam dianggap libur. Kosongkan semua hari untuk mengikuti jam operasional studio.</p>
+        <button type="button" class="btn btn-outline btn-block" onclick="window.hoursCopyStudio()">Salin jam operasional</button>
+        <div id="coach-hours-rows" class="stack" style="gap:10px"></div>
+        <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-save-hours" onclick="window.saveHours()">Simpan jam kerja</button>
+      </div>
+    </div>
+
+    <div class="sheet hide" id="modal-coach-timeoff" role="dialog" aria-modal="true" aria-labelledby="coach-timeoff-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="coach-timeoff-title">Tambah cuti</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-timeoff" onsubmit="window.submitTimeOff(event)">
+        <div class="two">
+          <div class="field"><label class="label" for="off-from">Mulai</label><input class="input" id="off-from" type="date" required></div>
+          <div class="field"><label class="label" for="off-to">Selesai</label><input class="input" id="off-to" type="date" required></div>
+        </div>
+        <label class="row" style="gap:10px;min-height:44px"><input type="checkbox" id="off-allday" checked onchange="window.toggleOffHours()"> Seharian</label>
+        <div class="two hide" id="off-hours">
+          <div class="field"><label class="label" for="off-hfrom">Dari jam</label><input class="input num" id="off-hfrom" type="number" inputmode="numeric" min="0" max="23" placeholder="10"></div>
+          <div class="field"><label class="label" for="off-hto">Sampai jam</label><input class="input num" id="off-hto" type="number" inputmode="numeric" min="1" max="24" placeholder="12"></div>
+        </div>
+        <div class="field"><label class="label" for="off-note">Catatan (hanya kamu yang lihat)</label><input class="input" id="off-note" type="text" maxlength="100" placeholder="Dokter, acara keluarga…"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan cuti</button>
+        <div id="off-clashes" class="stack" style="gap:8px"></div>
+      </form>
+    </div>
+
+    <div class="sheet hide" id="modal-coach-targets" role="dialog" aria-modal="true" aria-labelledby="coach-targets-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="coach-targets-title">Target bulanan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitTargets(event)">
+        <p class="hint">Kosongkan target yang tidak ingin kamu pakai.</p>
+        <div class="field"><label class="label" for="tg-sesi">Sesi per bulan</label><input class="input num" id="tg-sesi" type="number" inputmode="numeric" min="1" max="500" placeholder="Tidak diatur"></div>
+        <div class="field"><label class="label" for="tg-klienAktif">Klien aktif</label><input class="input num" id="tg-klienAktif" type="number" inputmode="numeric" min="1" max="200" placeholder="Tidak diatur"></div>
+        <div class="field"><label class="label" for="tg-pendapatan">Pendapatan (estimasi, Rp)</label><input class="input num" id="tg-pendapatan" type="number" inputmode="numeric" min="0" placeholder="Tidak diatur"></div>
+        <div class="field"><label class="label" for="tg-klienBaru">Klien baru per bulan</label><input class="input num" id="tg-klienBaru" type="number" inputmode="numeric" min="1" max="100" placeholder="Tidak diatur"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan target</button>
+      </form>
+    </div>
+
+    <!-- Perawatan klien (E4) -->
+    <div class="sheet hide" id="modal-care-notes" role="dialog" aria-modal="true" aria-labelledby="care-notes-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="care-notes-title">Catatan privat</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitCareNotes(event)">
+        <p class="hint">Hanya kamu yang bisa melihat ini. Tidak tampil di portal klien.</p>
+        <div class="field"><label class="label" for="care-flag">Perhatian singkat</label><input class="input" id="care-flag" type="text" maxlength="80" placeholder="Cedera lutut kiri"></div>
+        <div class="field"><label class="label" for="care-notes">Catatan</label><textarea class="textarea" id="care-notes" rows="4" maxlength="2000"></textarea></div>
+        <div class="field"><label class="label" for="care-birth">Tanggal lahir</label><input class="input" id="care-birth" type="date"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan</button>
+      </form>
+    </div>
+
+    <div class="sheet hide" id="modal-nut-edit" role="dialog" aria-modal="true" aria-labelledby="nut-edit-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-edit-title">Data gizi</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitNutEdit(event)">
+        <p class="hint">Hanya kamu yang melihat ini di panel. Target dihitung otomatis dari data ini, berat terbaru, dan sesi latihan.</p>
+        <div class="field"><label class="label" for="nut-tinggi">Tinggi badan (cm)</label><input class="input" id="nut-tinggi" type="text" inputmode="decimal" placeholder="170"></div>
+        <div class="field"><label class="label" for="nut-umur">Umur (tahun)</label><input class="input" id="nut-umur" type="text" inputmode="numeric" placeholder="27"><p class="hint" id="nut-umur-hint"></p></div>
+        <div class="field"><label class="label" for="nut-jk">Jenis kelamin</label><select class="select" id="nut-jk"><option value="">Belum diisi</option><option value="L">Laki-laki</option><option value="P">Perempuan</option></select></div>
+        <div class="field"><label class="label" for="nut-goal">Goal gizi</label><select class="select" id="nut-goal"><option value="">Belum diisi</option><option value="turun">Turun lemak</option><option value="naik">Naik otot</option><option value="jaga">Jaga / sehat</option><option value="recomp">Recomp</option></select></div>
+        <div class="field"><label class="label" for="nut-anggaran">Anggaran makan</label><select class="select" id="nut-anggaran"><option value="hemat">Hemat</option><option value="standar">Standar</option><option value="bebas">Bebas</option></select></div>
+        <div class="field"><p class="label">Alergi dan pantangan</p><div class="chips" id="nut-tags"></div></div>
+        <div class="field"><p class="label">Kondisi khusus</p><div class="chips" id="nut-kondisi"></div></div>
+        <label class="toggle-row"><span>Gizi aktif untuk klien ini</span><input type="checkbox" id="nut-aktif" checked></label>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan</button>
+      </form>
+    </div>
+
+    <div class="sheet hide" id="modal-care-assess" role="dialog" aria-modal="true" aria-labelledby="care-assess-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="care-assess-title">Assessment</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitAssessment(event)">
+        <div class="field"><label class="label" for="as-goal">Tujuan utama</label><input class="input" id="as-goal" type="text" maxlength="200"></div>
+        <div class="field"><label class="label" for="as-history">Riwayat latihan</label><textarea class="textarea" id="as-history" rows="2" maxlength="500"></textarea></div>
+        <div class="field"><label class="label" for="as-pref">Preferensi jadwal</label><input class="input" id="as-pref" type="text" maxlength="200" placeholder="Pagi, Senin &amp; Kamis"></div>
+        <div class="field"><label class="label" for="as-motivation">Motivasi</label><input class="input" id="as-motivation" type="text" maxlength="300"></div>
+        <div class="field"><label class="label" for="as-coach-notes">Catatan coach (tidak tampil ke klien)</label><textarea class="textarea" id="as-coach-notes" rows="2" maxlength="1000"></textarea></div>
+        <div class="group-label"><span>Ukuran awal (opsional)</span></div>
+        <div class="two">
+          <div class="field"><label class="label" for="as-weight">Berat (kg)</label><input class="input num" id="as-weight" type="text" inputmode="decimal"></div>
+          <div class="field"><label class="label" for="as-waist">Pinggang (cm)</label><input class="input num" id="as-waist" type="text" inputmode="decimal"></div>
+          <div class="field"><label class="label" for="as-lenganKanan">Lengan kanan (cm)</label><input class="input num" id="as-lenganKanan" type="text" inputmode="decimal"></div><div class="field"><label class="label" for="as-lenganKiri">Lengan kiri (cm)</label><input class="input num" id="as-lenganKiri" type="text" inputmode="decimal"></div><div class="field"><label class="label" for="as-perut">Perut (cm)</label><input class="input num" id="as-perut" type="text" inputmode="decimal"></div><div class="field"><label class="label" for="as-pahaKanan">Paha kanan (cm)</label><input class="input num" id="as-pahaKanan" type="text" inputmode="decimal"></div><div class="field"><label class="label" for="as-pahaKiri">Paha kiri (cm)</label><input class="input num" id="as-pahaKiri" type="text" inputmode="decimal"></div><div class="field"><label class="label" for="as-dada">Dada (cm)</label><input class="input num" id="as-dada" type="text" inputmode="decimal"></div>
+          <div class="field"><label class="label" for="as-fat">Lemak tubuh (%)</label><input class="input num" id="as-fat" type="text" inputmode="decimal"></div>
+          <div class="field"><label class="label" for="as-hip">Pinggul (cm)</label><input class="input num" id="as-hip" type="text" inputmode="decimal"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan assessment</button>
+      </form>
+    </div>
+
+    <!-- Tambah ke kalender (Fase I4), portal klien -->
+    <div class="sheet sm hide" id="modal-nut-info" role="dialog" aria-modal="true" aria-labelledby="nut-info-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-info-title"></h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:10px"><p id="nut-info-text"></p><p class="li-sub" id="nut-info-src"></p><p class="li-sub">Angka ini perkiraan, bukan pengganti ahli gizi atau dokter.</p></div>
+    </div>
+
+    <div class="sheet hide" id="modal-nut-swap" role="dialog" aria-modal="true" aria-labelledby="nut-swap-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-swap-title">Ganti makanan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:8px"><div class="stack" style="gap:4px" id="nut-swap-list"></div>
+        <button type="button" class="btn btn-outline btn-lg btn-block hide" id="nut-swap-more" onclick="window.nutSwapMore()"><i data-lucide="shuffle"></i> Acak lagi</button></div>
+    </div>
+
+    <div class="sheet hide" id="modal-nut-shop" role="dialog" aria-modal="true" aria-labelledby="nut-shop-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-shop-title">Belanja 7 hari</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px" id="nut-shop-list"></div>
+    </div>
+
+    <div class="sheet hide" id="modal-nut-onb" role="dialog" aria-modal="true" aria-labelledby="nut-onb-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-onb-title">Isi data</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px" id="nut-onb-body"></div>
+    </div>
+
+    <div class="sheet hide" id="modal-nut-add" role="dialog" aria-modal="true" aria-labelledby="nut-add-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-add-title">Tambah makanan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px" id="nut-add-body"></div>
+    </div>
+
+    <div class="sheet sm hide" id="modal-add-cal" role="dialog" aria-modal="true" aria-labelledby="cal-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="cal-title">Tambah ke kalender</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:10px">
+        <p class="li-sub" id="cal-sum"></p>
+        <a class="btn btn-primary btn-lg btn-block" id="cal-google" href="#" target="_blank" rel="noopener"><i data-lucide="calendar-plus"></i> Google Kalender</a>
+        <button type="button" class="btn btn-outline btn-lg btn-block" id="cal-ics" onclick="window.downloadIcs()"><i data-lucide="download"></i> Apple / Outlook (.ics)</button>
+        <button type="button" class="btn btn-ghost btn-block" onclick="window.closeModal()">Nanti saja</button>
+      </div>
+    </div>
+
+    <!-- Nomor belum terdaftar: arahkan ke pilihan paket -->
+    <div class="sheet sm hide" id="modal-not-member" role="dialog" aria-modal="true" aria-labelledby="nm-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nm-title">Nomor belum terdaftar</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:10px">
+        <p class="li-sub" id="nm-sum"></p>
+        <button type="button" class="btn btn-primary btn-lg btn-block" onclick="window.notMemberToPackages()"><i data-lucide="package"></i> Pilih paket &amp; daftar</button>
+        <button type="button" class="btn btn-ghost btn-block" onclick="window.closeModal()">Coba nomor lain</button>
+      </div>
+    </div>
+
+    <!-- Konten untuk klien (Fase J3), panel -->
+    <div class="sheet hide" id="modal-content" role="dialog" aria-modal="true" aria-labelledby="cn-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="cn-title">Konten</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-content" onsubmit="window.contentSave(event)">
+        <div class="field"><span class="label">Jenis</span><div class="chips chips-lg" role="radiogroup" aria-label="Jenis konten" id="cn-tipe"><button type="button" class="chip chip-lg" data-v="pengumuman" onclick="window.contentTipe('pengumuman')">Pengumuman</button><button type="button" class="chip chip-lg" data-v="tips" onclick="window.contentTipe('tips')">Tips</button><button type="button" class="chip chip-lg" data-v="video" onclick="window.contentTipe('video')">Video</button></div></div>
+        <div class="field"><label class="label" for="cn-judul">Judul</label><input class="input" id="cn-judul" type="text" maxlength="80"></div>
+        <div class="field"><label class="label" for="cn-isi">Isi</label><textarea class="textarea" id="cn-isi" rows="5" maxlength="2000"></textarea></div>
+        <div class="field" id="cn-url-field"><label class="label" for="cn-url">Link (https)</label><input class="input" id="cn-url" type="url" inputmode="url" maxlength="300" placeholder="https://youtu.be/…"></div>
+        <div class="field"><label class="label" for="cn-kategori">Kategori (opsional)</label><input class="input" id="cn-kategori" type="text" maxlength="30" placeholder="Nutrisi, Latihan, Pemulihan"></div>
+        <div class="two"><div class="field"><label class="label" for="cn-mulai">Tampil mulai</label><input class="input" id="cn-mulai" type="date"></div><div class="field"><label class="label" for="cn-sampai">Sampai</label><input class="input" id="cn-sampai" type="date"></div></div>
+        <label class="row" style="gap:10px;min-height:44px"><input type="checkbox" id="cn-sematkan"> <span>Sematkan di atas</span></label>
+        <label class="row" style="gap:10px;min-height:44px"><input type="checkbox" id="cn-aktif" checked> <span>Tampil ke klien</span></label>
+        <p class="hint err-msg" id="cn-err" role="alert" style="display:block"></p>
+      </form>
+      <div class="sheet-foot"><div class="btn-row"><button type="button" class="btn btn-ghost btn-lg hide" id="cn-del" onclick="window.contentDelete()">Hapus</button><button type="submit" form="form-content" class="btn btn-primary btn-lg" id="cn-save">Simpan</button></div></div>
+    </div>
+
+    <!-- Program latihan klien (Fase J2), panel -->
+    <div class="sheet hide" id="modal-program" role="dialog" aria-modal="true" aria-labelledby="prg-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="prg-title">Program latihan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-program" onsubmit="window.programSave(event)">
+        <p class="li-sub" id="prg-who"></p>
+        <div class="field"><label class="label" for="prg-tpl">Muat dari template</label><select class="select" id="prg-tpl" onchange="window.programLoadTemplate()"><option value="">Pilih template…</option></select></div>
+        <div class="stack" id="prg-form" style="gap:12px"></div>
+        <details class="pg-more"><summary>Simpan sebagai template</summary><div class="stack" style="gap:8px"><input class="input" id="prg-tpl-name" type="text" maxlength="60" placeholder="Nama template, mis. Pemula 3 hari"><label class="row pf-check"><input type="checkbox" id="prg-tpl-pub"><span>Tampilkan di Jelajahi klien (klien bisa menyalinnya jadi rutinitas sendiri)</span></label><button type="button" class="btn btn-outline btn-block" id="prg-tpl-save" onclick="window.programSaveTemplate()">Simpan template</button><button type="button" class="btn btn-ghost btn-block hide" id="prg-tpl-del" onclick="window.programDeleteTemplate()">Hapus template yang dipilih</button></div></details>
+        <p class="hint err-msg" id="prg-err" role="alert" style="display:block"></p>
+      </form>
+      <div class="sheet-foot"><div class="btn-row"><button type="button" class="btn btn-ghost btn-lg" id="prg-clear" onclick="window.programClear()">Hapus program</button><button type="submit" form="form-program" class="btn btn-primary btn-lg" id="prg-save">Simpan program</button></div></div>
+    </div>
+
+    <!-- Tambah gerakan (Fase O, ala Hevy): editor program, rutinitas klien, dan mode latihan. Bisa pilih banyak. -->
+    <div class="sheet hide" id="ex-search" role="dialog" aria-modal="true" aria-labelledby="exs-title">
+      <div class="sheet-handle"></div>
+      <div class="exs-head"><button type="button" class="link-btn exs-hbtn" onclick="window.closeModal()">Batal</button><h2 class="sheet-title" id="exs-title">Tambah gerakan</h2><button type="button" class="link-btn exs-hbtn" id="exs-create" onclick="window.exsCreate()">Buat</button></div>
+      <div class="exs-top">
+        <input class="input" id="exs-q" type="search" inputmode="search" autocomplete="off" placeholder="Cari gerakan" aria-label="Cari gerakan" oninput="window.exsFilter()" onkeydown="if(event.key==='Enter'){event.preventDefault();window.exsToggle('', '')}">
+        <div class="exs-filters">
+          <select class="select" id="exs-equip" aria-label="Alat" onchange="window.exsFilter()"><option value="">Semua alat</option></select>
+          <select class="select" id="exs-part" aria-label="Otot" onchange="window.exsFilter()"><option value="">Semua otot</option></select>
+        </div>
+      </div>
+      <div class="sheet-body stack" id="exs-list" style="gap:0"></div>
+      <div class="sheet-foot hide" id="exs-foot"><button type="button" class="btn btn-primary btn-lg btn-block" id="exs-add" onclick="window.exsAdd()">Tambah</button></div>
+      <p class="hint exs-credit" id="exs-credit"></p>
+    </div>
+
+    <!-- Mode latihan: lembar serbaguna (menu gerakan, riwayat, tambah gerakan, selesai) -->
+    <div class="sheet hide" id="modal-wl" role="dialog" aria-modal="true" aria-labelledby="wls-title">
+      <div class="confetti hide" id="wls-confetti" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="wls-title"></h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px" id="wls-body"></div>
+      <div class="sheet-foot hide" id="wls-foot"></div>
+    </div>
+
+    <!-- Evaluasi paket (Fase I3), portal klien -->
+    <div class="sheet hide" id="modal-pkg-eval" role="dialog" aria-modal="true" aria-labelledby="pe-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pe-title">Evaluasi paket</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:14px" id="pe-body"></div>
+      <div class="sheet-foot hide" id="pe-foot"><p class="hint err-msg" id="pe-err" role="alert" style="display:block"></p><div class="btn-row"><button type="button" class="btn btn-outline btn-lg" onclick="window.peRenew()">Perpanjang paket</button><button type="button" class="btn btn-primary btn-lg" id="pe-send" onclick="window.peSubmit()">Kirim evaluasi</button></div></div>
+    </div>
+
+    <!-- Catatan sesi (Fase I2): dibuka setelah "Selesai" dan dari detail sesi -->
+    <div class="sheet hide" id="modal-session-note" role="dialog" aria-modal="true" aria-labelledby="sn-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sn-title">Catatan sesi</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-session-note" onsubmit="window.sessionNoteSave(event, false)">
+        <p class="li-sub" id="sn-who"></p>
+        <button type="button" class="btn btn-secondary btn-block hide" id="sn-pkg"><i data-lucide="party-popper"></i> Paket selesai · ajak klien mengisi evaluasi (WA)</button>
+        <div class="field"><label class="label" for="sn-dilatih">Yang dilatih</label><textarea class="textarea" id="sn-dilatih" rows="2" maxlength="500" placeholder="Squat 3x10, plank 45 dtk"></textarea></div>
+        <div class="field"><label class="label" for="sn-fokus">Fokus berikutnya</label><input class="input" id="sn-fokus" type="text" maxlength="300" placeholder="Perdalam teknik squat"></div>
+        <div class="field"><label class="label" for="sn-rpe">RPE (1–10, seberapa berat)</label><input class="input num" id="sn-rpe" type="text" inputmode="numeric" maxlength="2" placeholder="7"></div>
+        <div class="field"><label class="label" for="sn-pribadi">Catatan pribadi (tidak tampil ke klien)</label><textarea class="textarea" id="sn-pribadi" rows="2" maxlength="1000"></textarea></div>
+        <p class="hint">Klien hanya melihat "Yang dilatih" dan "Fokus berikutnya".</p>
+        <p class="hint err-msg" id="sn-err" role="alert" style="display:block"></p>
+      </form>
+      <div class="sheet-foot"><div class="btn-row"><button type="submit" form="form-session-note" class="btn btn-outline btn-lg" id="sn-save-btn">Simpan</button><button type="button" class="btn btn-primary btn-lg" id="sn-wa-btn" onclick="window.sessionNoteSave(null, true)"><i data-lucide="message-circle"></i> Simpan &amp; kirim WA</button></div></div>
+    </div>
+
+    <div class="sheet hide" id="modal-care-tests" role="dialog" aria-modal="true" aria-labelledby="care-tests-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="care-tests-title">Tes kebugaran</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitCareTests(event)">
+        <div class="field"><label class="label" for="ft-date">Tanggal</label><input class="input" id="ft-date" type="date" required></div>
+        <div class="tm-card hide" id="ft-timer" role="timer">
+          <p class="eyebrow" id="ft-timer-label"></p>
+          <p class="tm-time num" id="ft-timer-time" aria-live="off">1:00</p>
+          <div class="btn-row"><button type="button" class="btn btn-primary btn-lg" id="ft-timer-toggle" onclick="window.ftToggle()">Mulai</button><button type="button" class="btn btn-outline btn-lg" onclick="window.ftReset()">Ulang</button><button type="button" class="btn btn-ghost btn-lg" onclick="window.ftClose()">Tutup</button></div>
+        </div>
+        <div id="ft-fields" class="form-grid"></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan hasil tes</button>
+      </form>
+    </div>
+
+    <div class="sheet hide" id="modal-care-health" role="dialog" aria-modal="true" aria-labelledby="care-health-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="care-health-title">Form kesehatan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px" id="care-health-body"></div>
+    </div>
+
+    <div class="sheet hide" id="modal-portal-health" role="dialog" aria-modal="true" aria-labelledby="ph-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="ph-title">Form kesehatan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" onsubmit="window.submitPortalHealth(event)">
+        <p class="hint">Supaya latihanmu aman. Hanya coach yang bisa membaca jawabanmu.</p>
+        <div id="ph-questions" class="stack" style="gap:14px"></div>
+        <div class="field"><label class="label" for="ph-injuries">Cedera atau operasi (jika ada)</label><input class="input" id="ph-injuries" type="text" maxlength="300"></div>
+        <div class="field"><label class="label" for="ph-med">Obat yang rutin diminum</label><input class="input" id="ph-med" type="text" maxlength="300"></div>
+        <div class="field"><label class="label" for="ph-other">Kondisi lain yang perlu coach tahu</label><input class="input" id="ph-other" type="text" maxlength="300"></div>
+        <label class="row" style="gap:10px;min-height:44px;align-items:flex-start"><input type="checkbox" id="ph-consent"> <span>Jawaban ini benar dan boleh dibaca coach.</span></label>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Kirim</button>
+      </form>
+    </div>
+
+    <div class="sheet hide" id="modal-coach-preview" role="dialog" aria-modal="true" aria-labelledby="coach-preview-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="coach-preview-title">Seperti dilihat klien</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body" id="coach-preview-body"></div>
+    </div>
+
+    <!-- Paket & Harga: menu aksi paket -->
+    <div class="sheet sm hide" id="sheet-pkg-menu" role="dialog" aria-modal="true" aria-labelledby="pkg-menu-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title truncate" id="pkg-menu-title">Paket</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack">
+        <button type="button" class="list-item interactive" style="min-height:56px" onclick="window.pkgMenuAction('edit')"><i data-lucide="pencil"></i><span class="li-title">Ubah</span></button>
+        <button type="button" class="list-item interactive" style="min-height:56px" onclick="window.pkgMenuAction('dup')"><i data-lucide="repeat"></i><span class="li-title">Duplikat</span></button>
+        <button type="button" class="list-item interactive" id="pkg-menu-delete" style="min-height:56px" onclick="window.pkgMenuAction('delete')"><i data-lucide="trash-2"></i><span class="li-title">Hapus</span></button>
+        <p class="hint" id="pkg-menu-delete-note"></p>
+      </div>
+    </div>
+
+    <!-- Paket & Harga: tambah / ubah paket -->
+    <div class="sheet tall hide" id="sheet-package" role="dialog" aria-modal="true" aria-labelledby="pkg-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pkg-title">Paket baru</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-package" onsubmit="window.pkgSave(event)" novalidate>
+        <div class="field" id="pkg-f-name"><label class="label" for="pkg-name">Nama paket</label><input class="input" type="text" id="pkg-name" maxlength="60" autocomplete="off" placeholder="Contoh: Regular 8 Sesi"><p class="hint err-msg" role="alert"></p></div>
+        <div class="field"><label class="label" for="pkg-cat">Kategori</label><select class="select" id="pkg-cat"></select></div>
+        <div class="field" id="pkg-f-price"><label class="label" for="pkg-price">Harga</label>
+          <div class="input-affix"><span class="affix">Rp</span><input class="input num" type="text" inputmode="numeric" id="pkg-price" autocomplete="off" placeholder="800.000" oninput="window.pkgFormatPrice(this)"></div>
+          <p class="hint err-msg" role="alert"></p></div>
+        <div class="field" id="pkg-f-sessions"><label class="label" for="pkg-sessions">Jumlah sesi</label>
+          <div class="two"><input class="input num" type="number" inputmode="numeric" id="pkg-sessions" min="1" max="200" placeholder="8">
+          <label class="pkg-flex"><input type="checkbox" id="pkg-flex" onchange="window.pkgFlexChange()"><span>Fleksibel</span></label></div>
+          <p class="hint err-msg" role="alert"></p></div>
+        <div class="row-between"><div><p class="li-title">Ini kelas</p><p class="li-sub">Klien bergabung ke kelas dengan kursi terbatas</p></div>
+          <label class="toggle"><input type="checkbox" id="pkg-class" onchange="window.pkgClassChange()" aria-label="Ini kelas"><span></span></label></div>
+        <div id="pkg-class-fields" class="form-grid hide">
+          <div class="field" id="pkg-f-cap"><label class="label" for="pkg-cap">Kapasitas (kursi)</label><input class="input num" type="number" inputmode="numeric" id="pkg-cap" min="2" max="50" placeholder="10"><p class="hint err-msg" role="alert"></p></div>
+          <div class="field"><label class="label" for="pkg-schedule">Jadwal kelas</label><input class="input" type="text" id="pkg-schedule" maxlength="80" autocomplete="off" placeholder="Contoh: Sen &amp; Rab 18:00"></div>
+          <div class="row-between"><div><p class="li-title">Boleh buat grup privat</p><p class="li-sub">Klien membuat grup, teman gabung dengan kode (maks. sebesar kapasitas)</p></div>
+            <label class="toggle"><input type="checkbox" id="pkg-private" aria-label="Boleh buat grup privat"><span></span></label></div>
+        </div>
+        <div class="field"><label class="label" for="pkg-duration">Durasi</label><input class="input" type="text" id="pkg-duration" maxlength="40" autocomplete="off" placeholder="Contoh: 1 Bulan"></div>
+        <div class="field"><label class="label" for="pkg-benefit-input">Benefit</label>
+          <div class="pkg-benefit-add"><input class="input" type="text" id="pkg-benefit-input" maxlength="60" autocomplete="off" enterkeyhint="done" placeholder="Ketik lalu Enter"><button type="button" class="btn btn-outline" onclick="window.pkgAddBenefit()">Tambah</button></div>
+          <div class="pkg-benefits" id="pkg-benefits"></div><p class="hint err-msg" id="pkg-err-benefit" role="alert" style="display:block"></p></div>
+        <div class="field"><label class="label" for="pkg-desc">Deskripsi</label><textarea class="textarea" id="pkg-desc" rows="3" maxlength="300" placeholder="Satu-dua kalimat tentang paket ini"></textarea></div>
+        <div class="row-between"><div><p class="li-title">Tampil di halaman booking</p><p class="li-sub">Nonaktif = tersembunyi, klien lama tidak terpengaruh</p></div>
+          <label class="toggle"><input type="checkbox" id="pkg-active" aria-label="Tampil di halaman booking"><span></span></label></div>
+      </form>
+      <div class="sheet-foot"><button type="submit" form="form-package" class="btn btn-primary btn-lg btn-block" id="pkg-save-btn">Simpan paket</button></div>
+    </div>
+
+    <!-- Progres: catat berat / pinggang -->
+    <div class="sheet sm hide" id="sheet-progress" role="dialog" aria-modal="true" aria-labelledby="pg-entry-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pg-entry-title">Catat hari ini</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-progress" onsubmit="window.pgSaveEntry(event)" novalidate>
+        <div class="field hide" id="pg-date-field"><label class="label" for="pg-tanggal">Tanggal</label><input class="input" type="date" id="pg-tanggal"></div>
+        <div class="field"><label class="label" for="pg-berat">Berat (kg)</label><input class="input num pg-big" type="text" inputmode="decimal" id="pg-berat" autocomplete="off" placeholder="72,4"></div>
+        <div class="field"><label class="label" for="pg-pinggang">Lingkar pinggang (cm)</label><input class="input num pg-big" type="text" inputmode="decimal" id="pg-pinggang" autocomplete="off" placeholder="80"></div>
+        <details class="pg-more" id="pg-more"><summary>Lingkar badan lainnya</summary><div class="two"><div class="field"><label class="label" for="pg-lenganKanan">Lengan kanan (cm)</label><input class="input num" type="text" inputmode="decimal" id="pg-lenganKanan" autocomplete="off" placeholder="32"></div><div class="field"><label class="label" for="pg-lenganKiri">Lengan kiri (cm)</label><input class="input num" type="text" inputmode="decimal" id="pg-lenganKiri" autocomplete="off" placeholder="32"></div><div class="field"><label class="label" for="pg-perut">Perut (cm)</label><input class="input num" type="text" inputmode="decimal" id="pg-perut" autocomplete="off" placeholder="85"></div><div class="field"><label class="label" for="pg-pahaKanan">Paha kanan (cm)</label><input class="input num" type="text" inputmode="decimal" id="pg-pahaKanan" autocomplete="off" placeholder="55"></div><div class="field"><label class="label" for="pg-pahaKiri">Paha kiri (cm)</label><input class="input num" type="text" inputmode="decimal" id="pg-pahaKiri" autocomplete="off" placeholder="55"></div><div class="field"><label class="label" for="pg-dada">Dada (cm)</label><input class="input num" type="text" inputmode="decimal" id="pg-dada" autocomplete="off" placeholder="95"></div></div></details>
+        <p class="hint">Boleh isi salah satu. Catatan di hari yang sama diperbarui.</p>
+        <p class="hint err-msg" id="pg-err" role="alert" style="display:block"></p>
+      </form>
+      <div class="sheet-foot"><button type="submit" form="form-progress" class="btn btn-primary btn-lg btn-block" id="pg-save-btn">Simpan</button></div>
+    </div>
+
+    <!-- Progres: foto -->
+    <div class="sheet tall hide" id="sheet-progress-photos" role="dialog" aria-modal="true" aria-labelledby="pg-photos-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pg-photos-title">Foto progres</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack">
+        <div class="stack" id="pg-photo-upload">
+          <div class="chips" role="radiogroup" aria-label="Sisi foto"><button type="button" class="chip active" id="pg-side-depan" onclick="window.pgSetSide('depan')">Depan</button><button type="button" class="chip" id="pg-side-samping" onclick="window.pgSetSide('samping')">Samping</button></div>
+          <button type="button" class="btn btn-primary btn-lg btn-block" id="pg-photo-btn" onclick="window.pgPickPhoto()"><i data-lucide="camera"></i> Ambil / pilih foto</button>
+          <input type="file" id="pg-photo-input" accept="image/*" class="sr-only" aria-label="Pilih foto progres" onchange="window.pgUploadPhoto(this)">
+        </div>
+        <div class="list" id="pg-photo-list"></div>
+      </div>
+    </div>
+
+    <!-- Kartu bagikan (gambar PNG dibuat di browser) -->
+    <div class="sheet tall hide" id="sheet-share" role="dialog" aria-modal="true" aria-labelledby="share-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="share-title">Bagikan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" id="share-body"></div>
+      <div class="sheet-foot" id="share-foot"></div>
+    </div>
+
+    <!-- Progres: lihat satu foto -->
+    <div class="sheet tall hide" id="sheet-photo-view" role="dialog" aria-modal="true" aria-labelledby="pg-view-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pg-view-title">Foto</h2><button type="button" class="icon-btn plain nav-back" onclick="window.pgClosePhotoView()" aria-label="Kembali ke daftar foto"><i data-lucide="chevron-left"></i></button></div>
+      <div class="sheet-body stack">
+        <p class="li-sub" id="pg-view-loading">Memuat foto…</p>
+        <img id="pg-view-img" class="pg-photo" alt="Foto progres">
+      </div>
+      <div class="sheet-foot"><button type="button" class="btn btn-danger btn-block" id="pg-view-del" onclick="window.pgDeletePhoto()"><i data-lucide="trash-2"></i> Hapus foto</button></div>
+    </div>
+
+    <!-- Perayaan badge baru -->
+    <div class="sheet sm hide" id="sheet-badge" role="dialog" aria-modal="true" aria-labelledby="pg-badge-title">
+      <div class="confetti" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="sheet-handle"></div>
+      <div class="sheet-body stack" style="text-align:center;align-items:center;padding-top:8px">
+        <span class="pg-trophy" aria-hidden="true"><i data-lucide="trophy"></i></span>
+        <h2 class="sheet-title" id="pg-badge-title">Badge baru! 🎉</h2>
+        <ul class="pg-badge-list" id="pg-badge-list"></ul>
+        <p class="li-sub">Keren, terus semangat latihannya!</p>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-secondary" onclick="window.closeModal()">Tutup</button>
+        <button type="button" class="btn btn-primary" id="pg-badge-share" onclick="window.pgShareBadge()"><i data-lucide="share-2"></i> Bagikan</button>
+      </div>
+    </div>
+
+    <!-- Perpanjang paket (portal klien) -->
+    <div class="sheet tall hide" id="sheet-renew" role="dialog" aria-modal="true" aria-labelledby="renew-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="renew-title">Perpanjang paket</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack"><p class="li-sub">Ketuk paket, lalu tekan tombol di bawah. WhatsApp ke coach terbuka untuk konfirmasi pembayaran.</p><div class="field hide" id="renew-coach-field"><label class="label" for="renew-coach">Coach</label><select class="select" id="renew-coach"></select></div><div class="list" id="renew-list"></div></div>
+      <div class="sheet-foot"><button type="button" class="btn btn-primary btn-lg btn-block" id="renew-go" onclick="window.renewGo()" disabled>Pilih paket dulu</button></div>
+    </div>
+
+    <!-- Fase U: profil program otomatis (3 langkah, portal klien) -->
+    <div class="sheet tall hide" id="sheet-pg-profile" role="dialog" aria-modal="true" aria-labelledby="pg-profile-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pg-profile-title">Program otomatis</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" id="pg-profile-body"></div>
+    </div>
+
+    <!-- Gabung grup kelas privat dengan kode (portal klien) -->
+    <div class="sheet sm hide" id="sheet-class-join" role="dialog" aria-modal="true" aria-labelledby="class-join-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="class-join-title">Gabung grup</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-class-join" onsubmit="window.classJoinSubmit(event)" novalidate>
+        <div class="field"><label class="label" for="class-join-code">Kode grup</label><input class="input num" type="text" id="class-join-code" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="ABC234" style="text-transform:uppercase;letter-spacing:.2em"><p class="hint">Kode 6 karakter dari temanmu. Kamu harus sudah memegang paket kelas yang sama.</p></div>
+      </form>
+      <div class="sheet-foot"><button type="submit" form="form-class-join" class="btn btn-primary btn-lg btn-block" id="class-join-btn">Gabung</button></div>
+    </div>
+
+    <!-- Potong foto -->
+    <div class="sheet hide" id="modal-crop-avatar" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="crop-title">Atur foto</h2><button type="button" class="icon-btn plain" onclick="window.cancelCrop()" aria-label="Batal"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body"><div class="crop-box"><img id="cropper-image" alt="Foto yang akan dipotong"></div></div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-secondary" onclick="window.cancelCrop()">Batal</button>
+        <button type="button" class="btn btn-primary" id="btn-save-crop" onclick="window.saveCroppedAvatar()"><i data-lucide="check"></i> Simpan foto</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Konfirmasi -->
+  <div class="layer confirm-layer hide" id="modal-confirm">
+    <div class="backdrop" onclick="window.closeConfirmModal()"></div>
+    <div class="sheet sm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message">
+      <div class="sheet-handle"></div>
+      <div class="sheet-body" style="padding-top:12px">
+        <div class="confirm-icon" id="confirm-modal-icon-wrap"><i data-lucide="help-circle" id="confirm-modal-icon"></i></div>
+        <h2 class="sheet-title" id="confirm-modal-title">Yakin?</h2>
+        <p class="muted" id="confirm-modal-message" style="margin-top:8px"></p>
+      </div>
+      <div class="sheet-foot">
+        <button type="button" class="btn btn-secondary" id="btn-confirm-modal-no" onclick="window.closeConfirmModal()">Batal</button>
+        <button type="button" class="btn btn-primary" id="btn-confirm-modal-yes" onclick="window.handleConfirmModalYes()">Ya</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="share-nudge hide" id="share-nudge" role="status" aria-live="polite"><p id="share-nudge-msg"></p><button type="button" class="btn btn-sm" onclick="window._shareNudgeGo && window._shareNudgeGo()"><i data-lucide="share-2"></i> Bagikan</button><button type="button" class="icon-btn plain" onclick="window.shareNudgeClose()" aria-label="Tutup ajakan"><i data-lucide="x"></i></button></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"><i data-lucide="check-circle-2"></i><span id="toast-msg"></span></div>
+  <div class="tooltip" id="chart-tooltip" role="tooltip"></div>
+  <input type="file" id="pub-avatar-input" accept="image/*" class="sr-only" aria-label="Pilih foto profil">
+
+  <script src="scripts.902896bc21.js"></script>
+  <script src="app.cd56f952be.js"></script>
+  <script src="bagikan.31039593b7.js"></script>
+</body>
+</html>
