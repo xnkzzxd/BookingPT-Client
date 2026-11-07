@@ -6,7 +6,7 @@
  * Penyimpanan cache itu satu per origin dan dipakai bersama service worker lain (app/sw.js: 'xnk-app-v…', pembungkus lama:
  * 'xnk-off-…', salinan lain berkas ini di cakupan lain), jadi tiap worker hanya menghapus awalannya sendiri.
  */
-var HASH = "498a530e27";
+var HASH = "5eb4f478be";
 // Awalan cache mengikuti cakupan worker (akar dan /next/ menjalankan berkas ini bersamaan di origin yang sama dan tidak boleh
 // saling menghapus cache): 'xnk-page-root-…', 'xnk-page-next-…'.
 var PREFIX = 'xnk-page-' + (new URL(self.registration.scope).pathname.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'root') + '-';

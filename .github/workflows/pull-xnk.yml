@@ -1,7 +1,7 @@
 name: Tarik portal dari XNK
 
 # Portal klien statis dibangun di repo XNK (Phase AAA) dan diterbitkan di xnk.my.id/client/ dengan manifest berisi sha256.
-# Action ini menariknya ke folder next/ (pratinjau; setelah cutover: akar situs) dan commit kalau berubah. Data publik saja, tanpa secret.
+# Action ini menariknya ke akar situs (halaman lama tersimpan di legacy.html) dan commit kalau berubah. Data publik saja, tanpa secret.
 on:
   schedule:
     - cron: '43 * * * *'
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
-      - run: node tools/pull-xnk.js client next
+      - run: node tools/pull-xnk.js client .
       - name: Commit kalau berubah
         run: |
           git config user.name "xnk-bot"
