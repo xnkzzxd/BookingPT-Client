@@ -6,12 +6,12 @@
  * Penyimpanan cache itu satu per origin dan dipakai bersama service worker lain (app/sw.js: 'xnk-app-v…', pembungkus lama:
  * 'xnk-off-…', salinan lain berkas ini di cakupan lain), jadi tiap worker hanya menghapus awalannya sendiri.
  */
-var HASH = "d555063b23";
+var HASH = "001e885c38";
 // Awalan cache mengikuti cakupan worker (akar dan /next/ menjalankan berkas ini bersamaan di origin yang sama dan tidak boleh
 // saling menghapus cache): 'xnk-page-root-…', 'xnk-page-next-…'.
 var PREFIX = 'xnk-page-' + (new URL(self.registration.scope).pathname.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'root') + '-';
 var CACHE = PREFIX + HASH;
-var ASSETS = ["app.fd4525b609.js","bagikan.31039593b7.js","config.js","host-local.1c9061bba4.js","offline.034c8628e6.js","offline.b44e4c2f5c.css","scripts.902896bc21.js","theme.b0a11de56a.css"];   // alamat relatif terhadap berkas ini
+var ASSETS = ["app.8d5e53755f.js","bagikan.31039593b7.js","config.js","host-local.1c9061bba4.js","offline.034c8628e6.js","offline.b44e4c2f5c.css","scripts.902896bc21.js","theme.b0a11de56a.css"];   // alamat relatif terhadap berkas ini
 var LIBS = ['https://xnk.my.id/exercises/exercises.min.json', 'https://xnk.my.id/foods/foods.min.json',
   'https://xnk.my.id/figure/figure.min.json', 'https://xnk.my.id/figure/rig.min.json'];
 var SCOPE = self.registration.scope;                       // mis. https://xnk.my.id/next/
