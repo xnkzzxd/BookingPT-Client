@@ -6,12 +6,12 @@
  * Penyimpanan cache itu satu per origin dan dipakai bersama service worker lain (app/sw.js: 'xnk-app-v…', pembungkus lama:
  * 'xnk-off-…', salinan lain berkas ini di cakupan lain), jadi tiap worker hanya menghapus awalannya sendiri.
  */
-var HASH = "335bade515";
+var HASH = "0890091d56";
 // Awalan cache mengikuti cakupan worker (akar dan /next/ menjalankan berkas ini bersamaan di origin yang sama dan tidak boleh
 // saling menghapus cache): 'xnk-page-root-…', 'xnk-page-next-…'.
 var PREFIX = 'xnk-page-' + (new URL(self.registration.scope).pathname.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'root') + '-';
 var CACHE = PREFIX + HASH;
-var ASSETS = ["app.ec9b053bf3.js","bagikan.31039593b7.js","config.js","host-local.1c9061bba4.js","offline.034c8628e6.js","offline.b44e4c2f5c.css","scripts.902896bc21.js","theme.269b8da71a.css"];   // alamat relatif terhadap berkas ini
+var ASSETS = ["app.d1b85c9838.js","bagikan.ac9bb51f21.js","config.js","host-local.1c9061bba4.js","offline.034c8628e6.js","offline.b44e4c2f5c.css","scripts.902896bc21.js","theme.a8a3a5a7ea.css"];   // alamat relatif terhadap berkas ini
 var LIBS = ['https://xnk.my.id/exercises/exercises.min.json', 'https://xnk.my.id/foods/foods.min.json',
   'https://xnk.my.id/figure/figure.min.json', 'https://xnk.my.id/figure/rig.min.json'];
 var SCOPE = self.registration.scope;                       // mis. https://xnk.my.id/next/
@@ -56,4 +56,29 @@ self.addEventListener('fetch', function (e) {
     return;
   }
   if (LIBS.indexOf(page) !== -1) e.respondWith(swr(req));
+});
+
+// ── Web Push (Fase X, docs/push) ──────────────────────────────────────────────
+// Isi push dibuat server (Push.gs): judul dan isi pendek, hanya nama depan. Tidak ada data lain di dalamnya.
+self.addEventListener('push', function (e) {
+  var d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (x) { d = { body: e.data ? e.data.text() : '' }; }
+  var title = String(d.title || 'XNK').slice(0, 80);
+  var opts = { body: String(d.body || '').slice(0, 200), icon: '/icon-192.png', badge: '/icon-192.png', data: { url: String(d.url || '/') } };
+  if (d.tag) opts.tag = String(d.tag).slice(0, 40);
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+self.addEventListener('notificationclick', function (e) {
+  e.notification.close();
+  var url = SCOPE;
+  try {
+    var u = new URL((e.notification.data && e.notification.data.url) || '/', SCOPE);
+    if (u.origin === self.location.origin) url = u.href;   // hanya alamat di situs ini
+  } catch (x) {}
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (list) {
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].url.indexOf(SCOPE) === 0 && 'focus' in list[i]) return list[i].focus();
+    }
+    return self.clients.openWindow(url);
+  }));
 });
