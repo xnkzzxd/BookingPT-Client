@@ -6,7 +6,7 @@
   <script src="config.js"></script>
   <script src="host-local.1c9061bba4.js"></script>
   <link rel="stylesheet" href="offline.b44e4c2f5c.css">
-  <script>document.write('<script src="offline.034c8628e6.js" data-mode="' + (/[?&](view=public|k=)/.test(location.search) || (window.XNK_CONFIG && window.XNK_CONFIG.site === 'client') ? 'client' : 'coach') + '"><\/script>');</script>
+  <script>document.write('<script src="offline.e4a82eccac.js" data-mode="' + (/[?&](view=public|k=)/.test(location.search) || (window.XNK_CONFIG && window.XNK_CONFIG.site === 'client') ? 'client' : 'coach') + '"><\/script>');</script>
   <link rel="preconnect" href="https://script.google.com">
   <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="icon" href="https://xnk.my.id/favicon.ico">
@@ -47,7 +47,7 @@
     gtag('config', 'G-93SRTYH3SG');
   </script>
 
-  <link rel="stylesheet" href="theme.0a3f48fc11.css">
+  <link rel="stylesheet" href="theme.ba620f2206.css">
 </head>
 <body>
 
@@ -213,6 +213,11 @@
       <div class="sheet-handle"></div>
       <div class="sheet-head"><h2 class="sheet-title" id="pc-title">Ubah profil</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
       <div class="sheet-body stack" style="gap:18px;padding-top:16px" id="pc-body"></div>
+    </div>
+    <div class="sheet hide" id="sheet-gerak" role="dialog" aria-modal="true" aria-labelledby="sheet-gerak-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-gerak-title">Contoh gerakan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body" id="gerak-body" style="padding-top:16px"></div>
     </div>
     <div class="sheet hide" id="sheet-notif" role="dialog" aria-modal="true" aria-labelledby="sheet-notif-title">
       <div class="sheet-handle"></div>
@@ -628,6 +633,12 @@
         <button type="button" class="btn btn-outline btn-lg btn-block hide" id="nut-swap-more" onclick="window.nutSwapMore()"><i data-lucide="shuffle"></i> Acak lagi</button></div>
     </div>
 
+    <div class="sheet hide" id="modal-nut-gaya" role="dialog" aria-modal="true" aria-labelledby="nut-gaya-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="nut-gaya-title">Pengaturan menu</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:8px"><p class="label">Gaya menu</p><div class="stack" style="gap:4px" id="nut-gaya-list"></div></div>
+    </div>
+
     <div class="sheet hide" id="modal-nut-shop" role="dialog" aria-modal="true" aria-labelledby="nut-shop-title">
       <div class="sheet-handle"></div>
       <div class="sheet-head"><h2 class="sheet-title" id="nut-shop-title">Belanja 7 hari</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
@@ -961,7 +972,7 @@
   <input type="file" id="pub-avatar-input" accept="image/*" class="sr-only" aria-label="Pilih foto profil">
 
   <script src="scripts.902896bc21.js"></script>
-  <script src="app.ee1635c3a7.js"></script>
+  <script src="app.884ce35a24.js"></script>
   <script src="bagikan.ac9bb51f21.js"></script>
 </body>
 </html>

@@ -6,14 +6,15 @@
  * Penyimpanan cache itu satu per origin dan dipakai bersama service worker lain (app/sw.js: 'xnk-app-v…', pembungkus lama:
  * 'xnk-off-…', salinan lain berkas ini di cakupan lain), jadi tiap worker hanya menghapus awalannya sendiri.
  */
-var HASH = "75c27d61cd";
+var HASH = "b2baa095e4";
 // Awalan cache mengikuti cakupan worker (akar dan /next/ menjalankan berkas ini bersamaan di origin yang sama dan tidak boleh
 // saling menghapus cache): 'xnk-page-root-…', 'xnk-page-next-…'.
 var PREFIX = 'xnk-page-' + (new URL(self.registration.scope).pathname.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'root') + '-';
 var CACHE = PREFIX + HASH;
-var ASSETS = ["app.ee1635c3a7.js","bagikan.ac9bb51f21.js","config.js","host-local.1c9061bba4.js","offline.034c8628e6.js","offline.b44e4c2f5c.css","scripts.902896bc21.js","theme.0a3f48fc11.css"];   // alamat relatif terhadap berkas ini
+var ASSETS = ["app.884ce35a24.js","bagikan.ac9bb51f21.js","config.js","host-local.1c9061bba4.js","offline.b44e4c2f5c.css","offline.e4a82eccac.js","scripts.902896bc21.js","theme.ba620f2206.css"];   // alamat relatif terhadap berkas ini
 var LIBS = ['https://xnk.my.id/exercises/exercises.min.json', 'https://xnk.my.id/foods/foods.min.json',
   'https://xnk.my.id/figure/figure.min.json', 'https://xnk.my.id/figure/rig.min.json'];
+var GIF_BASE = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/', GIF_CACHE = 'xnk-gif-v1', GIF_MAX = 150;
 var SCOPE = self.registration.scope;                       // mis. https://xnk.my.id/next/
 function abs(u) { return new URL(u, SCOPE).href; }
 var ASSET_URLS = ASSETS.map(abs);
@@ -55,7 +56,23 @@ self.addEventListener('fetch', function (e) {
     e.respondWith(caches.match(req, { ignoreSearch: true }).then(function (hit) { return hit || fetch(req); }));
     return;
   }
-  if (LIBS.indexOf(page) !== -1) e.respondWith(swr(req));
+  if (LIBS.indexOf(page) !== -1) { e.respondWith(swr(req)); return; }
+  // GIF contoh gerakan (ditautkan dari dataset pustaka): disimpan saat pertama dilihat supaya tampil tanpa sinyal.
+  // Cache sendiri ('xnk-gif-v1', tidak ikut terhapus saat versi halaman berganti), paling banyak GIF_MAX berkas.
+  if (req.url.indexOf(GIF_BASE) === 0) {
+    e.respondWith(caches.open(GIF_CACHE).then(function (c) {
+      return c.match(req.url).then(function (hit) {
+        return hit || fetch(req).then(function (res) {
+          if (res.ok || res.type === 'opaque') {
+            c.put(req.url, res.clone()).then(function () { return c.keys(); }).then(function (keys) {
+              if (keys.length > GIF_MAX) return Promise.all(keys.slice(0, keys.length - GIF_MAX).map(function (k) { return c.delete(k); }));
+            }).catch(function () {});
+          }
+          return res;
+        });
+      });
+    }));
+  }
 });
 
 // ── Web Push (Fase X, docs/push) ──────────────────────────────────────────────
