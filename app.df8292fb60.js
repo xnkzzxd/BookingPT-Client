@@ -1002,6 +1002,10 @@
         setField('Chat ID Telegram', '<input class="input" type="text" id="set-tgChat" data-k="tgChat" autocomplete="off" inputmode="numeric" placeholder="111111, 222222" value="' + h(d.telegramChatIds) + '">', 'tgChat', 'Pisahkan dengan koma kalau lebih dari satu.') +
         '<button type="button" class="btn btn-outline btn-block" id="btn-telegram-test" onclick="window.sendTelegramTest()">' + icon('send') + ' Kirim pesan tes</button>' +
         setField('Email Notifikasi', '<input class="input" type="email" id="set-email" data-k="email" autocomplete="off" placeholder="Kosongkan = email pemilik akun" value="' + h(d.notifEmail) + '">', 'email', '') +
+        setField('Kirim ringkasan ke email', '<select class="select" id="set-emailRmd" data-k="emailRmd">' +
+          [['off', 'Mati'], ['auto', 'Otomatis (bila Telegram belum diatur)'], ['on', 'Selalu']].map(function (o) {
+            return '<option value="' + o[0] + '"' + ((d.notifEmailReminders || 'off') === o[0] ? ' selected' : '') + '>' + h(o[1]) + '</option>';
+          }).join('') + '</select>', 'emailRmd', 'Ringkasan pengingat (sesi besok, PR, makan, …) dengan tombol WhatsApp per klien, ke Email Notifikasi.') +
         '</div>';
     },
     jam: function () {
@@ -1645,6 +1649,7 @@
       if (has('tgToken') && vals.tgToken.trim()) p.telegramBotToken = vals.tgToken.trim();
       if (has('tgChat')) p.telegramChatIds = vals.tgChat;
       if (has('email')) p.notifEmail = vals.email;
+      if (has('emailRmd')) p.notifEmailReminders = vals.emailRmd;
     } else if (id === 'jam') {
       const hours = {};
       for (let i = 0; i < 7; i++) hours[i] = [Number(vals['h' + i + 's']), Number(vals['h' + i + 'e'])];
@@ -6883,7 +6888,7 @@
       }
       if (window.myX && window.myX.journey) src.journey = window.myX.journey;
       // Kartu ikut warna aksen dan gaya kartu atlet: warna dibaca dari token --accent halaman (tidak ada warna tetap di kode).
-      if (xp && xp.aksen && xp.aksen !== 'hitam') { const ac = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(); if (ac) src.accent = ac; }
+      if (xp && window.effAccent(xp) !== 'hitam') { const ac = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(); if (ac) src.accent = ac; }
       if (xp && xp.gaya) src.cardStyle = xp.gaya;
       src.photoLoader = function (pid) { return memberCall('getMyProgressPhoto', pid).then(r => r.dataUrl); };
     }
@@ -10490,28 +10495,37 @@
 
   // Detail tagihan
   window.finOpenBill = function (id) {
+    // Buka panel seketika dari data daftar, lalu isi pembayaran setelah server menjawab.
+    const row = (fin.bills || []).filter(function (x) { return x.id === id; })[0];
+    if (row) finBillPanel(id, row, null);
     adminCall('getBillDetail', id).then(function (r) {
-      const b = r.bill;
-      fin.billId = id;
-      const pays = r.payments.map(function (p) {
-        return '<div class="tl-item"><div class="tl-card"><div class="row-between"><b>' + h(finRp(p.amount)) + '</b><span class="li-sub">' + h(p.date) + '</span></div>' +
-          '<p class="li-sub">' + h(p.method) + (p.note ? ' · ' + h(p.note) : '') + (p.hasProof ? ' · 📎' : '') + (p.archived ? ' · diarsipkan' : '') + '</p>' +
-          '<div class="btn-row">' + (p.archived ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.finRestore(\'payment\',\'' + h(p.id) + '\')">Pulihkan</button>' : '<button type="button" class="btn btn-outline btn-sm" onclick="window.finOpenPayment(\'' + h(p.id) + '\')">Ubah</button>') + '</div></div></div>';
-      }).join('');
-      const wa = b.phone ? '<button type="button" class="btn btn-secondary" onclick="window.finBill_wa(\'' + h(id) + '\')">' + icon('message-circle') + 'WA tagih</button>' : '';
-      fin.detail = r;
-      openDetail('bill:' + id, b.name || 'Tagihan',
-        '<button type="button" class="icon-btn" onclick="window.finBillMenu(\'' + h(id) + '\')" aria-label="Menu tagihan">' + icon('more-horizontal') + '</button>',
-        '<div class="stack"><p class="li-sub">' + h(b.packageName) + ' · ' + h(b.date) + '</p>' +
-        '<div class="kv"><div><p class="k">Total</p><p class="v num">' + h(finRp(b.total)) + '</p></div><div><p class="k">Diskon</p><p class="v num">' + h(finRp(b.discount)) + '</p></div>' +
-        '<div><p class="k">Dibayar</p><p class="v num">' + h(finRp(b.paid)) + '</p></div><div><p class="k">Sisa</p><p class="v num">' + h(finRp(b.remaining)) + ' <span class="' + FIN_STATUS_PILL[b.status] + '">' + h(b.status) + '</span></p></div></div>' +
-        (b.note ? '<p class="li-sub">' + h(b.note) + '</p>' : '') +
-        '<div class="group-label"><span>Pembayaran</span></div>' + (pays ? '<div class="timeline">' + pays + '</div>' : '<p class="li-sub">Belum ada pembayaran.</p>') +
-        '<div class="btn-row" style="position:sticky;bottom:0;background:var(--bg);padding:8px 0">' + wa +
-        (b.remaining ? '<button type="button" class="btn btn-outline" onclick="window.finOpenPayment(null,\'' + h(id) + '\',' + b.remaining + ')">Lunasi</button>' : '') +
-        '<button type="button" class="btn btn-primary" onclick="window.finOpenPayment(null,\'' + h(id) + '\')">' + icon('plus') + 'Bayar</button></div></div>');
+      fin.billId = id; fin.detail = r;
+      finBillPanel(id, r.bill, r.payments);
     }).catch(finErr);
   };
+  function finBillPanel(id, b, payments) {
+    const money = function (v) { return v == null ? '…' : h(finRp(v)); };
+    const pays = payments === null
+      ? '<div class="skel-wrap" aria-hidden="true"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:85%"></div></div>'
+      : payments.map(function (p) {
+        return '<div class="card-flat fin-pay"><div class="fin-pay-top"><b class="num">' + h(finRp(p.amount)) + '</b><span class="li-sub">' + h(p.date) + '</span></div>' +
+          '<p class="li-sub">' + h(p.method) + (p.note ? ' · ' + h(p.note) : '') + (p.hasProof ? ' · 📎' : '') + (p.archived ? ' · diarsipkan' : '') + '</p>' +
+          '<div class="btn-row">' + (p.archived ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.finRestore(\'payment\',\'' + h(p.id) + '\')">Pulihkan</button>' : '<button type="button" class="btn btn-outline btn-sm" onclick="window.finOpenPayment(\'' + h(p.id) + '\')">Ubah</button>') + '</div></div>';
+      }).join('');
+    const ready = payments !== null;
+    const wa = ready && b.phone ? '<button type="button" class="btn btn-secondary" onclick="window.finBill_wa(\'' + h(id) + '\')">' + icon('message-circle') + 'WA tagih</button>' : '';
+    const pill = b.status ? ' <span class="' + FIN_STATUS_PILL[b.status] + '">' + h(b.status) + '</span>' : '';
+    openDetail('bill:' + id, b.name || 'Tagihan',
+      ready ? '<button type="button" class="icon-btn" onclick="window.finBillMenu(\'' + h(id) + '\')" aria-label="Menu tagihan">' + icon('more-horizontal') + '</button>' : '',
+      '<div class="stack"><p class="li-sub">' + h(b.packageName || '') + ' · ' + h(b.date || '') + '</p>' +
+      '<div class="kv"><div><p class="k">Total</p><p class="v num">' + money(b.total) + '</p></div><div><p class="k">Diskon</p><p class="v num">' + money(b.discount) + '</p></div>' +
+      '<div><p class="k">Dibayar</p><p class="v num">' + money(b.paid) + '</p></div><div><p class="k">Sisa</p><p class="v num">' + money(b.remaining) + pill + '</p></div></div>' +
+      (b.note ? '<p class="li-sub">' + h(b.note) + '</p>' : '') +
+      '<div class="group-label"><span>Pembayaran</span></div>' + (payments === null || pays ? '<div class="fin-pays">' + pays + '</div>' : '<p class="li-sub">Belum ada pembayaran.</p>') +
+      (ready ? '<div class="btn-row" style="position:sticky;bottom:0;background:var(--bg);padding:8px 0">' + wa +
+      (b.remaining ? '<button type="button" class="btn btn-outline" onclick="window.finOpenPayment(null,\'' + h(id) + '\',' + b.remaining + ')">Lunasi</button>' : '') +
+      '<button type="button" class="btn btn-primary" onclick="window.finOpenPayment(null,\'' + h(id) + '\')">' + icon('plus') + 'Bayar</button></div>' : '') + '</div>');
+  }
   window.finBill_wa = function (id) {
     const b = fin.detail && fin.detail.bill;
     if (!b || !b.phone) return;
@@ -11238,8 +11252,12 @@
   window.myX = {};
   const X = () => window.myX || {};
   // Warna aksen pilihan klien berlaku di seluruh portal; 'hitam' (bawaan) = tanpa atribut.
+  // T-2242: di hub xnk.web.id halaman coach membawa warna coach di <html data-brand-accent>; itu bawaan panel, layar masuk
+  // dan klien yang belum pernah memilih (profile.aksenSet === false). Pilihan klien sendiri (termasuk hitam) menang.
+  const brandAccent = () => document.documentElement.getAttribute('data-brand-accent') || '';
+  window.effAccent = function (p) { return p && p.aksenSet === false ? (brandAccent() || 'hitam') : (p && p.aksen) || 'hitam'; };
   window.applyAccent = function () {
-    const a = ui.mode === 'public' && window.publicLoggedMember && X().profile ? X().profile.aksen : '';
+    const a = ui.mode === 'public' && window.publicLoggedMember && X().profile ? window.effAccent(X().profile) : brandAccent();
     if (a && a !== 'hitam') document.documentElement.setAttribute('data-accent', a); else document.documentElement.removeAttribute('data-accent');
   };
   const BADGE_CODE = { 'sesi-10': '10', 'sesi-25': '25', 'sesi-50': '50', 'sesi-100': '100', 'streak-4': '4W', 'streak-8': '8W', 'streak-12': '12W', 'catat-5': 'L5', 'catat-20': 'L20', 'pr-1': 'PR', 'pr-10': 'P10' };
@@ -11517,13 +11535,13 @@
     const wrap = $('set-accent-wrap'), p = X().profile, on = !!(p && window.publicLoggedMember && ui.mode === 'public');
     if (!wrap) return;
     wrap.classList.toggle('hide', !on);
-    if (on) setHTML('set-accent', accentSwatches(p.aksen, 'window.setAccent'));
+    if (on) setHTML('set-accent', accentSwatches(window.effAccent(p), 'window.setAccent'));
   }
   window.setAccent = function (a) {
     const p = X().profile;
-    if (!p || p.aksen === a) return;
-    const old = p.aksen, put = function (v) { p.aksen = v; window.applyAccent(); savePortalCache(); setAccentDraw(); window.renderPortalX(); if (window.currentView === 'public-more') renderPublicMore(); };
-    put(a);
+    if (!p || (p.aksenSet !== false && p.aksen === a)) return;
+    const old = { aksen: p.aksen, aksenSet: p.aksenSet }, put = function (v) { Object.assign(p, v); window.applyAccent(); savePortalCache(); setAccentDraw(); window.renderPortalX(); if (window.currentView === 'public-more') renderPublicMore(); };
+    put({ aksen: a, aksenSet: true });
     optimistic({ q: { mode: 'member', fn: 'saveMyProfileCard', args: [{ panggilan: p.panggilan, motto: p.motto, aksen: a, gaya: p.gaya, stat: p.stat.slice(), badge: p.badge.slice() }] }, ok: 'Warna aksen disimpan.', label: 'Warna aksen', undo: function () { put(old); } });
   };
   const openSettingsBase = window.openSettings;
@@ -11798,7 +11816,8 @@
   window.openProfileEdit = function () {
     const p = X().profile;
     if (!p) { window.showToast('Data profil belum termuat. Coba lagi sebentar.'); return; }
-    pcx.d = { panggilan: p.panggilan, motto: p.motto, aksen: p.aksen, gaya: p.gaya, stat: p.stat.slice(), badge: p.badge.slice() };
+    pcx.d = { panggilan: p.panggilan, motto: p.motto, aksen: window.effAccent(p), gaya: p.gaya, stat: p.stat.slice(), badge: p.badge.slice() };
+    pcx.a0 = pcx.d.aksen;
     pcDraw();
     openSheet('sheet-profile-edit');
     pcx.on = true;
@@ -11856,11 +11875,13 @@
     const bad = t => /^[=+\-@]/.test(t);
     if (d.stat.length < lim.statMin) { $('pc-err').textContent = 'Pilih ' + lim.statMin + ' atau ' + lim.statMax + ' statistik.'; return; }
     if (bad(d.panggilan) || bad(d.motto)) { $('pc-err').textContent = 'Nama panggilan dan motto tidak boleh diawali tanda = + - atau @.'; return; }
-    const old = { panggilan: p.panggilan, motto: p.motto, aksen: p.aksen, gaya: p.gaya, stat: p.stat, badge: p.badge, nama: p.nama };
+    const old = { panggilan: p.panggilan, motto: p.motto, aksen: p.aksen, aksenSet: p.aksenSet, gaya: p.gaya, stat: p.stat, badge: p.badge, nama: p.nama };
     const put = function (v) { Object.assign(p, v); window.applyAccent(); savePortalCache(); window.renderPortalX(); if (window.currentView === 'public-more') renderPublicMore(); };
     const send = { panggilan: d.panggilan, motto: d.motto, aksen: d.aksen, gaya: d.gaya, stat: d.stat.slice(), badge: d.badge.slice() };
+    // Warna coach yang hanya ditampilkan (belum pernah dipilih) tidak disimpan sebagai pilihan klien.
+    if (p.aksenSet === false && d.aksen === pcx.a0) delete send.aksen;
     pcx.on = false;
-    put(Object.assign({}, send, { nama: d.panggilan || String(me.name || '').split(' ')[0] }));
+    put(Object.assign({}, send, { nama: d.panggilan || String(me.name || '').split(' ')[0] }, send.aksen ? { aksenSet: true } : {}));
     optimistic({ q: { mode: 'member', fn: 'saveMyProfileCard', args: [send] }, sheet: true, errEl: 'pc-err', ok: 'Profil disimpan.', label: 'Profil', undo: function () { put(old); pcx.on = true; } });
   };
   // Lembar ditutup tanpa menyimpan: warna aksen kembali ke yang tersimpan.
@@ -12218,7 +12239,7 @@
     let c2 = group('Paket & coach', row(go('public-pack'), 'package', 'Paket saya', total ? 'Sisa ' + rem + ' dari ' + total + ' sesi' : (me.packageName || 'Lihat paket')) + row(go('public-coaches'), 'dumbbell', 'Coach', coach ? coach.name : 'Profil, jam, chat') + row(go('calendar'), 'calendar-days', 'Jadwal', next ? fmtDate(new Date(next.start), { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + fmtTime(new Date(next.start)) : 'Belum ada jadwal') + row('window.chatCoach()', 'message-circle', 'Chat coach', 'Lewat WhatsApp'));
     const p = X().profile;
     c2 += '<div class="ds-group"><p class="ds-gt">Tampilan</p><div class="ds-list"><div class="ds-row ds-static"><b class="grow">Tema</b><div class="seg" id="theme-seg-3" role="radiogroup" aria-label="Tema"></div></div>' +
-      (p ? '<div class="ds-row ds-static"><b class="grow">Warna aksen</b>' + accentSwatches(p.aksen, 'window.setAccent') + '</div>' : '') + '</div></div>';
+      (p ? '<div class="ds-row ds-static"><b class="grow">Warna aksen</b>' + accentSwatches(window.effAccent(p), 'window.setAccent') + '</div>' : '') + '</div></div>';
     const badges = (pg.data && pg.data.badges) || [], got = badges.filter(b => b.earned).length;
     let c3 = '<section class="card ds-card"><div class="row-between"><b>Koleksi badge</b><span class="li-sub">' + got + ' dari ' + badges.length + '</span></div><div class="ds-badges">' +
       badges.map(b => '<span class="ds-badge' + (b.earned ? ' on' : '') + '" title="' + h(b.label) + '">' + shieldSvg(b.id, b.label, !!b.earned) + '</span>').join('') + '</div></section>';
