@@ -178,6 +178,24 @@
   window.sendToParentWA = function (phone, text) {
     window.open(window.waUrl(phone, text), '_blank');
   };
+  // Nomor WA klien sebuah sesi: dari profil klien (MemberData) yang sekarang; kolom "No WA" di jadwal hanya
+  // salinan saat booking dan bisa basi (nomor lama / nomor uji), jadi dipakai hanya bila klien tidak ketemu.
+  window.clientPhone = function (s) {
+    if (!s) return '';
+    const m = s.memberId ? (window.members || []).find(function (x) { return x && String(x.id).trim() === String(s.memberId).trim(); }) : null;
+    return String((m && m.phone) || s.phone || '').trim();
+  };
+  // WA ke klien sesi; nomor kosong = beri tahu, jangan buka wa.me tanpa nomor (pemilih kontak / pesan ke diri sendiri).
+  window.waToClient = function (s, text) {
+    const p = sanitizePhone(window.clientPhone(s));
+    if (p.length < 8) { window.showToast('Nomor WA klien belum diisi.'); return; }
+    window.sendToParentWA(p, text);
+  };
+  // "Coach Vinna" tetap "Coach Vinna"; "Vinna" jadi "Coach Vinna" (tidak pernah "Coach Coach").
+  window.coachLabel = function (name) {
+    const n = String(name == null ? '' : name).trim();
+    return /^coach\b/i.test(n) ? n : 'Coach ' + n;
+  };
   // Tampilkan tombol "Buka WhatsApp" setelah aksi berhasil. Pengguna membukanya
   // dengan ketukan sendiri (link biasa), jadi tidak ada tab kosong yang dibuka
   // lebih dulu dan tidak diblokir popup blocker.
@@ -1033,7 +1051,7 @@
     keuangan: function () { return finSettingsHtml(); },
     latihan: function () { return exAliasHtml(); },
     akun: function () {
-      return '<div class="card-flat stack"><p class="li-sub">Keluar dari panel di perangkat ini.</p>' +
+      return (window.unduhCardHtml ? window.unduhCardHtml() : '') + '<div class="card-flat stack"><p class="li-sub">Keluar dari panel di perangkat ini.</p>' +
         '<button type="button" class="btn btn-danger btn-block" onclick="window.logoutCurrent()">' + icon('log-out') + ' Keluar</button></div>';
     },
     paket: function () { return '<div class="stack" id="pkg-root">' + pkgHtml() + '</div>'; },
@@ -2261,6 +2279,7 @@
       if (r[2]) applyCoachesAdmin(r[2]);
       if (r[3]) window.priceListData = r[3];
       if (r[4]) Object.assign(DAY_HOURS, r[4]);
+      if (b) window.setReadonly(b.readonly, 'admin');   // T-2251
       ui.dataReady = true;
       window.hideGlobalLoader();
       if (r[0] && r[1]) saveAdminCache();
@@ -2341,6 +2360,7 @@
     return boot.then(function (b) {
       b = b || {};
       applyPortalBootstrap(b);
+      if (b.profile || b.openSlots) window.setReadonly(b.readonly ? { on: true } : null, 'portal');   // T-2251 (jawaban gagal = biarkan)
       if (token && haveMore && !b.authLost) { if (!moreUpToDate(b)) window.refreshPortalMore(true); else window.wlFlush(); }
       window.coaches = b.coaches || [];
       window.priceListData = b.priceList || [];
@@ -2619,7 +2639,7 @@
     const mins = Math.round((end - d) / 60000);
     let actions = '';
     if (opts.actions && !isAvailable(s)) {
-      actions = sessActions(s.id, { done: isDone(s), phone: s.phone });
+      actions = sessActions(s.id, { done: isDone(s), phone: window.clientPhone(s) });
     }
     return '<div class="' + cls + '" data-key="session:' + h(s.id) + '">' +
       '<div class="tl-time">' + fmtTime(d) + '<small>' + mins + ' mnt</small></div>' +
@@ -2636,7 +2656,7 @@
     const s = window.schedules.find(x => String(x.id) === String(id));
     if (!s) return;
     const d = new Date(s.start);
-    window.sendToParentWA(s.phone, 'Halo ' + s.title + ', ini Coach XNK. Mengingatkan jadwal latihan kita ' + fmtDate(d) + ' jam ' + fmtTime(d) + ' WIB. Sampai ketemu!');
+    window.waToClient(s, 'Halo ' + s.title + ', ini Coach XNK. Mengingatkan jadwal latihan kita ' + fmtDate(d) + ' jam ' + fmtTime(d) + ' WIB. Sampai ketemu!');
   };
   window.quickEdit = function (id) { window.selectedScheduleDetailId = id; window.openEditScheduleDetailModal(); };
   window.quickComplete = function (id) { window.selectedScheduleDetailId = id; window.markSessionCompleted(); };
@@ -3258,7 +3278,7 @@
         '<div' + (member ? ' role="button" tabindex="0" style="cursor:pointer" onclick="window.openProfile(\'' + h(member.id) + '\')"' : '') + '><p class="k">Klien</p><p class="v">' + h(s.title) + '</p></div>' +
         '<div><p class="k">Sisa sesi</p><p class="v">' + (member ? remainingOf(member) + ' sesi' : '—') + '</p></div>' +
         '<div><p class="k">Status</p><p class="v">' + h(info.label) + '</p></div>' +
-        (s.phone ? '<div><p class="k">WhatsApp</p><p class="v">+' + h(s.phone) + '</p></div>' : '') +
+        (window.clientPhone(s) ? '<div><p class="k">WhatsApp</p><p class="v">+' + h(sanitizePhone(window.clientPhone(s))) + '</p></div>' : '') +
         '<div class="wide"><p class="k">Catatan</p><p class="v">' + (s.notes ? h(s.notes) : '<span class="muted" style="font-weight:500">Tidak ada catatan</span>') + '</p></div></div>';
     } else {
       body += '<div class="kv"><div class="wide"><p class="k">Catatan</p><p class="v">' + (s.notes ? h(s.notes) : '<span class="muted" style="font-weight:500">Tidak ada catatan</span>') + '</p></div></div>';
@@ -3272,7 +3292,7 @@
     if (!isDone(s) && !isAvailable(s)) body += '<button type="button" class="btn btn-primary btn-lg btn-block" id="btn-complete-session" onclick="window.markSessionCompleted()">' + icon('check-circle-2') + 'Tandai selesai & potong 1 sesi</button>';
     body += '<div class="btn-row">' +
       (!isDone(s) ? '<button type="button" class="btn btn-outline" onclick="window.openEditScheduleDetailModal()">' + icon('calendar-clock') + 'Ubah jadwal</button>' : '') +
-      (s.phone ? '<button type="button" class="btn btn-outline" onclick="window.contactDetailMember()">' + icon('message-circle') + 'Chat klien</button>' : '') +
+      (window.clientPhone(s) ? '<button type="button" class="btn btn-outline" onclick="window.contactDetailMember()">' + icon('message-circle') + 'Chat klien</button>' : '') +
       (s.coachId && !window.isSoloCoach() ? '<button type="button" class="btn btn-outline" onclick="window.contactDetailCoach()">' + icon('dumbbell') + 'Chat coach</button>' : '') +
       '</div>';
     body += '<button type="button" class="btn btn-ghost btn-block" id="btn-delete-schedule" onclick="window.deleteScheduleFromDetail()">' + icon('trash-2') + 'Hapus sesi ini</button>';
@@ -3302,7 +3322,7 @@
       const s = window.schedules.find(x => String(x.id) === String(window.selectedScheduleDetailId));
       if (s) { s.coachId = coachId; s.coachName = coach ? coach.name : ''; }
       done();
-      window.showToast(coach ? 'Coach ' + coach.name + ' ditugaskan.' : 'Coach dikosongkan.');
+      window.showToast(coach ? window.coachLabel(coach.name) + ' ditugaskan.' : 'Coach dikosongkan.');
       window.updateUI();
     }).catch(function (err) { done(); window.showToast('Gagal: ' + err.message); });
   };
@@ -3314,7 +3334,7 @@
     const c = window.coaches.find(x => String(x.id) === String(s.coachId));
     if (!c) return;
     const d = new Date(s.start);
-    window.sendToParentWA(c.phone, 'Halo Coach ' + c.name + ', kamu ditugaskan untuk sesi bersama ' + s.title + ' pada ' + fmtDate(d) + ' jam ' + fmtTime(d) + ' WIB.');
+    window.sendToParentWA(c.phone, 'Halo ' + window.coachLabel(c.name) + ', kamu ditugaskan untuk sesi bersama ' + s.title + ' pada ' + fmtDate(d) + ' jam ' + fmtTime(d) + ' WIB.');
   };
 
   window.markSessionCompleted = function () {
@@ -7500,7 +7520,7 @@
     // Paket habis: tawarkan ajakan evaluasi lewat WhatsApp (tombol, tidak dikirim otomatis).
     const pk = $('sn-pkg');
     pk.classList.toggle('hide', !(result && result.packageDone));
-    pk.onclick = result && result.packageDone ? function () { window.sendToParentWA(s.phone, result.evalText); } : null;
+    pk.onclick = result && result.packageDone ? function () { window.waToClient(s, result.evalText); } : null;
     openSheet('modal-session-note');
     adminCall('getSessionNote', s.id).then(function (n) {
       if (noteSched !== s) return;
@@ -7512,7 +7532,7 @@
     if (!noteSched || String(noteSched.id) !== String(scheduleId) || !result || !result.packageDone) return;
     const s = noteSched, pk = $('sn-pkg');
     pk.classList.remove('hide');
-    pk.onclick = function () { window.sendToParentWA(s.phone, result.evalText); };
+    pk.onclick = function () { window.waToClient(s, result.evalText); };
   };
   window.sessionNoteSave = function (e, withWa) {
     if (e) e.preventDefault();
@@ -7526,7 +7546,11 @@
       const done = busy($('sn-wa-btn'), 'Menyimpan…');
       adminCall('saveSessionNote', s.id, note).then(function (r) {
         done(); window.closeModal(); window.showToast('Catatan sesi disimpan.');
-        setTimeout(function () { window.sendToParentWA(s.phone, r.text); }, 200);
+        // waLink dibuat server dari nomor profil klien yang sekarang (bukan salinan di jadwal).
+        setTimeout(function () {
+          const mm = /^https:\/\/wa\.me\/(\d{8,})/.exec(String((r && r.waLink) || ''));
+          if (mm) window.sendToParentWA(mm[1], r.text); else window.waToClient(s, r && r.text);
+        }, 200);
       }).catch(function (err) { done(); $('sn-err').textContent = window.authMessage(err); });
       return;
     }
@@ -10306,7 +10330,7 @@
     const c = window.coaches.find(x => String(x.id) === String(id));
     if (!c) return;
     const me = window.publicLoggedMember;
-    window.sendToParentWA(c.phone, 'Halo Coach ' + c.name + ', saya ' + (me ? me.name : '') + ' ingin tanya program latihan' + (c.specialty ? ' ' + c.specialty : '') + '.');
+    window.sendToParentWA(c.phone, 'Halo ' + window.coachLabel(c.name) + ', saya ' + (me ? me.name : '') + ' ingin tanya program latihan' + (c.specialty ? ' ' + c.specialty : '') + '.');
   };
 
   // ── Detik berjalan: jam & hitung mundur ────────────────────────────────────
@@ -12249,5 +12273,221 @@
       (lv ? lv.rinci.map(r => '<div class="ds-pt"><span>' + h(r.label) + '</span><span class="px-bar"><i style="width:' + Math.round(r.poin / max * 100) + '%"></i></span><b class="num">' + r.poin + '</b></div>').join('') : skel(3)) +
       '<button type="button" class="btn btn-secondary ds-out" onclick="window.logoutCurrent()">' + icon('log-out') + 'Keluar</button></section>';
     return '<div class="ds-saya">' + athleteCardHtml().replace('class="card-ink athlete', 'class="card-ink athlete ath-wide') + '<div class="ds-cols"><div class="ds-col">' + c1 + '</div><div class="ds-col">' + c2 + '</div><div class="ds-col">' + c3 + '</div></div></div>';
+  };
+  // ── Unduh data saya (T-2255): Pengaturan → Akun ─────────────────────────────
+  // Ambil semua sheet per halaman lewat exportMyData (Unduh.gs, hanya membaca), rakit .xlsx di browser tanpa pustaka
+  // luar (zip sendiri; deflate lewat CompressionStream bila ada, kalau tidak disimpan apa adanya) lalu unduh.
+  const unduh = { run: false, pct: 0, text: '', err: '' };
+
+  function unduhProgHtml() {
+    if (unduh.err) return '<p class="hint err-msg">' + h(unduh.err) + '</p>';
+    if (!unduh.run && !unduh.text) return '';
+    return '<div class="meter" aria-hidden="true"><i style="width:' + Math.round(unduh.pct) + '%;transition:none"></i></div><p class="hint">' + h(unduh.text) + '</p>';
+  }
+  function unduhPaint() {
+    const el = $('unduh-prog');
+    if (el) el.innerHTML = unduhProgHtml();
+    const b = $('unduh-btn');
+    if (b) {
+      b.disabled = unduh.run;
+      b.innerHTML = unduh.run ? '<span class="spin" aria-hidden="true"></span> Mengunduh…' : icon('download') + ' Unduh data saya';
+      if (!unduh.run) paintIcons();
+    }
+  }
+  window.unduhCardHtml = function () {
+    return '<div class="card-flat stack"><div><p class="li-title">Unduh data saya</p>' +
+      '<p class="li-sub">Semua data (klien, jadwal, latihan, gizi, keuangan, …) dalam satu berkas Excel. Foto progres, kunci perangkat, dan pengaturan rahasia tidak ikut.</p></div>' +
+      '<button type="button" class="btn btn-outline btn-block" id="unduh-btn" onclick="window.unduhData()"' + (unduh.run ? ' disabled>' + '<span class="spin" aria-hidden="true"></span> Mengunduh…' : '>' + icon('download') + ' Unduh data saya') + '</button>' +
+      '<div class="stack" id="unduh-prog" role="status" aria-live="polite">' + unduhProgHtml() + '</div></div>';
+  };
+
+  // Satu halaman; gangguan jaringan dicoba lagi sampai 3 kali.
+  function unduhPage(req, tries) {
+    return adminCall('exportMyData', req).catch(function (err) {
+      if ((tries || 0) >= 2 || /tidak valid|tidak ditemukan|sesi|login|pin/i.test(String(err && err.message || err))) throw err;
+      return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return unduhPage(req, (tries || 0) + 1); });
+    });
+  }
+
+  window.unduhData = async function () {
+    if (unduh.run) return;
+    unduh.run = true; unduh.pct = 0; unduh.err = ''; unduh.text = 'Menyiapkan daftar sheet…';
+    unduhPaint();
+    try {
+      const list = await unduhPage(null);
+      const sheets = (list && list.sheets) || [];
+      const total = sheets.reduce(function (n, s) { return n + Math.max(1, s.rows || 0); }, 0) || 1;
+      let done = 0;
+      const got = [];
+      for (let i = 0; i < sheets.length; i++) {
+        const s = sheets[i], rows = [];
+        let from = 1;
+        unduh.text = 'Sheet ' + (i + 1) + ' dari ' + sheets.length + ': ' + s.name;
+        unduhPaint();
+        while (from > 0) {
+          const r = await unduhPage({ sheet: s.name, from: from });
+          const part = (r && r.rows) || [];
+          for (let j = 0; j < part.length; j++) rows.push(part[j]);
+          done += part.length;
+          unduh.pct = Math.min(95, done / total * 95);
+          unduhPaint();
+          const next = Number(r && r.next) || 0;
+          from = next > from ? next : 0;
+        }
+        if (!s.rows) { done += 1; unduh.pct = Math.min(95, done / total * 95); }
+        got.push({ name: s.name, rows: rows });
+      }
+      unduh.text = 'Membuat berkas Excel…';
+      unduhPaint();
+      const blob = await xlsxBlob(got);
+      const d = new Date(), p2 = function (n) { return ('0' + n).slice(-2); };
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'data-saya-' + d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + '.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+      unduh.run = false; unduh.pct = 100;
+      unduh.text = 'Selesai: ' + got.length + ' sheet, ' + Math.max(1, Math.round(blob.size / 1024)) + ' KB.';
+      unduhPaint();
+      window.showToast('Data diunduh.');
+    } catch (err) {
+      unduh.run = false; unduh.text = '';
+      unduh.err = window.authMessage(err) + ' Coba lagi.';
+      unduhPaint();
+    }
+  };
+
+  // ── Penulis .xlsx kecil (inline string, baris judul tebal dan dibekukan) ──
+  const XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+  const NS_MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+  const NS_REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const NS_PKG = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  function xmlEsc(v) {
+    let s = String(v == null ? '' : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '');
+    if (s.length > 32767) s = s.slice(0, 32767);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function xlCol(n) { let s = ''; for (n++; n > 0; n = Math.floor((n - 1) / 26)) s = String.fromCharCode(65 + (n - 1) % 26) + s; return s; }
+  function xlSheetNames(list) {
+    const used = {};
+    return list.map(function (it, i) {
+      let base = String(it.name || '').replace(/[\[\]:*?\/\\]/g, ' ').replace(/^'+|'+$/g, '').trim().slice(0, 31) || ('Sheet' + (i + 1));
+      let nm = base, k = 2;
+      while (used[nm.toLowerCase()]) { const suf = ' (' + (k++) + ')'; nm = base.slice(0, 31 - suf.length) + suf; }
+      used[nm.toLowerCase()] = 1;
+      return nm;
+    });
+  }
+  function xlSheetXml(rows) {
+    const out = [XML_HEAD, '<worksheet xmlns="', NS_MAIN, '">'];
+    if (rows.length > 1) out.push('<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>');
+    out.push('<sheetData>');
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r] || [];
+      out.push('<row r="', r + 1, '">');
+      for (let c = 0; c < row.length; c++) {
+        const v = row[c] == null ? '' : String(row[c]);
+        if (v === '') continue;
+        const ref = xlCol(c) + (r + 1), st = r === 0 ? ' s="1"' : '';
+        // Hanya bilangan bulat pendek jadi angka: "1.500" (format Indonesia) dan nomor WA tetap teks.
+        if (/^-?(0|[1-9]\d{0,8})$/.test(v)) out.push('<c r="', ref, '"', st, '><v>', v, '</v></c>');
+        else out.push('<c r="', ref, '"', st, ' t="inlineStr"><is><t xml:space="preserve">', xmlEsc(v), '</t></is></c>');
+      }
+      out.push('</row>');
+    }
+    out.push('</sheetData></worksheet>');
+    return out.join('');
+  }
+  const XL_STYLES = XML_HEAD + '<styleSheet xmlns="' + NS_MAIN + '"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  function xlsxFiles(list) {
+    if (!list.length) list = [{ name: 'Kosong', rows: [] }];
+    const names = xlSheetNames(list);
+    const files = [];
+    let ct = XML_HEAD + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>';
+    let wb = XML_HEAD + '<workbook xmlns="' + NS_MAIN + '" xmlns:r="' + NS_REL + '"><sheets>';
+    let rels = XML_HEAD + '<Relationships xmlns="' + NS_PKG + '">';
+    list.forEach(function (it, i) {
+      const n = i + 1;
+      ct += '<Override PartName="/xl/worksheets/sheet' + n + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>';
+      wb += '<sheet name="' + xmlEsc(names[i]) + '" sheetId="' + n + '" r:id="rId' + n + '"/>';
+      rels += '<Relationship Id="rId' + n + '" Type="' + NS_REL + '/worksheet" Target="worksheets/sheet' + n + '.xml"/>';
+      files.push(['xl/worksheets/sheet' + n + '.xml', xlSheetXml(it.rows || [])]);
+    });
+    rels += '<Relationship Id="rId' + (list.length + 1) + '" Type="' + NS_REL + '/styles" Target="styles.xml"/></Relationships>';
+    files.unshift(
+      ['[Content_Types].xml', ct + '</Types>'],
+      ['_rels/.rels', XML_HEAD + '<Relationships xmlns="' + NS_PKG + '"><Relationship Id="rId1" Type="' + NS_REL + '/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+      ['xl/workbook.xml', wb + '</sheets></workbook>'],
+      ['xl/_rels/workbook.xml.rels', rels],
+      ['xl/styles.xml', XL_STYLES]);
+    return files;
+  }
+
+  // ── Zip (PKZIP 2.0, tanpa zip64; berkas Excel jauh di bawah 4 GB) ──
+  let crcTab = null;
+  function crc32(b) {
+    if (!crcTab) { crcTab = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcTab[n] = c >>> 0; } }
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < b.length; i++) c = crcTab[(c ^ b[i]) & 255] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  async function deflateRaw(b) {
+    if (typeof CompressionStream !== 'function') return null;
+    try {
+      const cs = new CompressionStream('deflate-raw');
+      const out = await new Response(new Blob([b]).stream().pipeThrough(cs)).arrayBuffer();
+      return new Uint8Array(out);
+    } catch (e) { return null; }   // browser lama tanpa deflate-raw: simpan apa adanya
+  }
+  async function zipBlob(files) {
+    const enc = new TextEncoder(), parts = [], central = [];
+    const now = new Date();
+    const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    let off = 0;
+    for (let i = 0; i < files.length; i++) {
+      const name = enc.encode(files[i][0]), raw = enc.encode(files[i][1]), crc = crc32(raw);
+      const z = await deflateRaw(raw), useZ = !!z && z.length < raw.length, data = useZ ? z : raw;
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, useZ ? 8 : 0, true);
+      lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true); lh.setUint32(22, raw.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(lh.buffer, name, data);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, useZ ? 8 : 0, true);
+      ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
+      ch.setUint32(20, data.length, true); ch.setUint32(24, raw.length, true); ch.setUint16(28, name.length, true);
+      ch.setUint32(42, off, true);
+      central.push(ch.buffer, name);
+      off += 30 + name.length + data.length;
+    }
+    const cdSize = central.reduce(function (n, x) { return n + x.byteLength; }, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+    return new Blob(parts.concat(central, [end.buffer]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  async function xlsxBlob(list) { return zipBlob(xlsxFiles(list)); }
+  window.xlsxBlob = xlsxBlob;   // dipakai tools/browser-check.js untuk memeriksa berkasnya
+  // ═══ T-2251: mode baca saja (langganan coach di hub xnk.web.id) ═══
+  // Server menolak semua fungsi tulis (gerbang di doPost); di sini hanya pita tenang di atas halaman. Panel coach melihat
+  // alasan dan catatan pengelola; klien hanya "data hanya bisa dilihat" (tanpa cerita langganan).
+  window.setReadonly = function (ro, mode) {
+    window.isReadonly = !!(ro && ro.on);
+    const el = document.getElementById('ro-band');
+    if (!el) return;
+    if (!window.isReadonly) { el.classList.add('hide'); el.innerHTML = ''; return; }
+    const admin = mode === 'admin';
+    const txt = admin
+      ? 'Langganan aplikasi perlu diperpanjang. Semua data aman dan tetap bisa dilihat, tetapi belum bisa diubah.'
+      : 'Untuk sementara data hanya bisa dilihat. Booking dan catatan baru belum bisa disimpan.';
+    const note = admin && ro.note ? '<span class="ro-note">' + h(ro.note) + '</span>' : '';
+    el.innerHTML = '<span class="ro-ic" aria-hidden="true">' + icon('lock') + '</span><div class="ro-tx"><b>Mode baca saja</b><span>' + h(txt) + '</span>' + note + '</div>';
+    el.classList.remove('hide');
+    paintIcons();
   };
 })();
