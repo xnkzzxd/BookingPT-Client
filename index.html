@@ -47,7 +47,7 @@
     gtag('config', 'G-93SRTYH3SG');
   </script>
 
-  <link rel="stylesheet" href="theme.a287bafa9e.css">
+  <link rel="stylesheet" href="theme.b99c2a86eb.css">
 </head>
 <body>
 
@@ -79,6 +79,8 @@
         </div>
         <button type="button" class="icon-btn plain tb-back hide" id="topbar-back" onclick="window.navigate(this.getAttribute('data-to') || 'public-dashboard')" aria-label="Kembali"><i data-lucide="arrow-left"></i></button>
         <h1 class="topbar-title" id="page-title">XNK</h1><span class="topbar-sub" id="page-sub"></span>
+        <!-- Antrean simpan (01-awal syncPaint): di luar #topbar-actions karena isi itu ditulis ulang tiap halaman -->
+        <button type="button" class="sync-chip hide" id="sync-badge" aria-live="polite" aria-label="Semua tersimpan" onclick="window.openSyncSheet()"></button>
         <div class="topbar-actions" id="topbar-actions"></div>
       </header>
 
@@ -669,6 +671,16 @@
       </div>
     </div>
 
+    <!-- Antrean simpan: perubahan yang belum sampai ke server (lencana #sync-badge) -->
+    <div class="sheet sm hide" id="sheet-sync" role="dialog" aria-modal="true" aria-labelledby="sync-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sync-title">Status simpan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:10px">
+        <p class="li-sub">Perubahan dicatat di perangkat ini dulu, lalu dikirim sendiri saat tersambung.</p>
+        <div class="stack" style="gap:10px" id="sync-list"></div>
+      </div>
+    </div>
+
     <!-- Nomor belum terdaftar: arahkan ke pilihan paket -->
     <div class="sheet sm hide" id="modal-not-member" role="dialog" aria-modal="true" aria-labelledby="nm-title">
       <div class="sheet-handle"></div>
@@ -972,8 +984,8 @@
   <div class="tooltip" id="chart-tooltip" role="tooltip"></div>
   <input type="file" id="pub-avatar-input" accept="image/*" class="sr-only" aria-label="Pilih foto profil">
 
-  <script src="scripts.59ffb27686.js"></script>
-  <script src="app.e6822028a3.js"></script>
+  <script src="scripts.893be8a4ca.js"></script>
+  <script src="app.7a03922b38.js"></script>
   <script src="bagikan.4f4a79e645.js"></script>
 </body>
 </html>
