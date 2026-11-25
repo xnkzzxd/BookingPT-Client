@@ -47,7 +47,7 @@
     gtag('config', 'G-93SRTYH3SG');
   </script>
 
-  <link rel="stylesheet" href="theme.c7edf2830c.css">
+  <link rel="stylesheet" href="theme.8e1a836281.css">
 </head>
 <body>
 
@@ -289,6 +289,18 @@
       <div class="sheet-foot"><button type="submit" form="form-fin-pay" class="btn btn-primary btn-lg btn-block" id="fin-pay-save">Simpan</button></div>
     </div>
 
+    <div class="sheet hide" id="sheet-fin-lunas" role="dialog" aria-modal="true" aria-labelledby="sheet-fin-lunas-t">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="sheet-fin-lunas-t">Lunasi tagihan</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <form class="sheet-body form-grid" id="form-fin-lunas" onsubmit="window.finLunasGo(event)" novalidate>
+        <div class="fin-lunas-q"><p id="fin-lunas-text"></p><p class="li-sub" id="fin-lunas-sub"></p></div>
+        <div class="field"><span class="label">Dibayar lewat</span><div class="chips" id="fin-lunas-method" style="flex-wrap:wrap"></div></div>
+        <div class="field"><label class="label" for="fin-lunas-date">Tanggal</label><input class="input" type="date" id="fin-lunas-date"></div>
+        <p class="hint err-msg" id="fin-lunas-err" role="alert" style="display:block"></p>
+      </form>
+      <div class="sheet-foot btn-row"><button type="button" class="btn btn-outline btn-lg" onclick="window.finLunasMore()">Ubah detail</button><button type="submit" form="form-fin-lunas" class="btn btn-primary btn-lg" id="fin-lunas-go" disabled>Ya, lunasi</button></div>
+    </div>
+
     <div class="sheet tall hide" id="sheet-fin-expense" role="dialog" aria-modal="true" aria-labelledby="sheet-fin-expense-t">
       <div class="sheet-handle"></div>
       <div class="sheet-head"><h2 class="sheet-title" id="sheet-fin-expense-t"><span id="fin-exp-title">Keuangan</span></h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
@@ -338,7 +350,7 @@
         <div class="field"><label class="label" for="member-name">Nama lengkap</label><input class="input" type="text" id="member-name" required autocomplete="off"></div>
         <div class="field"><label class="label" for="member-phone">Nomor WhatsApp</label>
           <div class="input-affix"><span class="affix">+62</span><input class="input" type="tel" inputmode="numeric" id="member-phone" required placeholder="81234567890"></div>
-          <span class="hint">Nomor yang sudah terdaftar akan diperpanjang paketnya.</span>
+          <span class="hint" id="member-phone-hint">Nomor yang sudah terdaftar akan diperpanjang paketnya.</span>
         </div>
         <div class="field"><label class="label" for="member-goal">Tujuan latihan</label><input class="input" type="text" id="member-goal" placeholder="Contoh: turun berat badan"></div>
         <div class="field"><span class="label">Paket</span>
@@ -356,7 +368,7 @@
           <div class="field"><label class="label" for="member-total-sessions">Total sesi</label><input class="input num" type="number" id="member-total-sessions" required value="10" min="1"></div>
           <div class="field"><label class="label" for="member-used-sessions">Sesi terpakai</label><input class="input num" type="number" id="member-used-sessions" required value="0" min="0"></div>
         </div>
-        <button type="submit" class="btn btn-primary btn-lg btn-block">Simpan klien</button>
+        <button type="submit" class="btn btn-primary btn-lg btn-block" id="member-submit">Simpan klien</button>
       </form>
     </div>
 
@@ -985,7 +997,7 @@
   <input type="file" id="pub-avatar-input" accept="image/*" class="sr-only" aria-label="Pilih foto profil">
 
   <script src="scripts.893be8a4ca.js"></script>
-  <script src="app.7914ae94c0.js"></script>
+  <script src="app.755ea3510a.js"></script>
   <script src="bagikan.4f4a79e645.js"></script>
 </body>
 </html>

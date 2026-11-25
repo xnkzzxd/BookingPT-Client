@@ -586,8 +586,11 @@
     const hk = sq.hooks[it.id];
     delete sq.hooks[it.id];
     if (hk) { if (hk.then) try { hk.then(res); } catch (e) { console.error(e); } hk.resolve(res); }
-    else sq.refresh = true;   // pesanan dari halaman sebelumnya: muat ulang data saat antrean kosong
+    else sqNeedsReload(it);   // pesanan dari halaman sebelumnya: muat ulang data saat antrean kosong
   }
+  // Simpanan keuangan cukup memuat ulang Keuangan (diam-diam), bukan seluruh panel.
+  const SQ_FIN_FN = /^(savePayment|saveExpense|saveBillAdjust|archiveFinanceItem|restoreFinanceItem|saveFinanceCategory|deleteFinanceCategory|saveCoachShare)$/;
+  function sqNeedsReload(it) { if (it && SQ_FIN_FN.test(it.fn)) sq.finReload = true; else sq.refresh = true; }
   function sqFail(it, err) {
     const msg = window.authMessage(err) || 'Ditolak server.';
     sqUpdate(it.id, x => { x.state = 'failed'; x.err = msg; delete x.sentAt; });
@@ -612,7 +615,8 @@
     if (ch) sqWrite(a);
     const it = a.find(x => x.state !== 'failed' && sqMine(x));
     if (!it) {
-      if (sq.refresh) { sq.refresh = false; if (window.refreshAll) try { window.refreshAll(true); } catch (e) {} }
+      if (sq.refresh) { sq.refresh = sq.finReload = false; if (window.refreshAll) try { window.refreshAll(true); } catch (e) {} }
+      else if (sq.finReload) { sq.finReload = false; if (window.finStale) try { window.finStale(); } catch (e) {} }
       wlane.laneIdle();
       return Promise.resolve();
     }
@@ -662,6 +666,9 @@
   // Tab ditutup sebelum pesanan pertama sempat dikirim: kirim sekali dengan keepalive (jawaban tidak dibaca; pembukaan
   // berikutnya mengirim ulang dengan cid yang sama dan server memutar ulang jawabannya).
   window.addEventListener('pagehide', function () {
+    // Lepas giliran kirim milik tab ini: halaman yang dibuka lagi tidak perlu menunggu lease 20 detik habis (2026-11:
+    // "Lunasi" pertama setelah aplikasi dibuka ulang tertahan sampai 20 detik).
+    try { const l = JSON.parse(_lsGet(SQ_LEASE) || 'null'); if (l && l.tab === sq.tab) _lsSet(SQ_LEASE, null); } catch (e) {}
     try {
       if (typeof window.XNK_TRANSPORT === 'function' || !window.XNK_CONFIG || !window.XNK_CONFIG.exec || typeof fetch !== 'function') return;
       const it = sqRead().find(x => x.state === 'pending' && !x.tries && sqMine(x));
@@ -754,15 +761,18 @@
   window.syncWlDrop = function (id) { if (window.wlDrop) window.wlDrop(id); syncAfter(); };
   window.syncFqOpen = function (id) { if (window.fqFailedDrop) window.fqFailedDrop(id); window.closeModal(); setTimeout(function () { window.navigate('public-food'); }, 300); };
   window.syncFqDrop = function (id) { if (window.fqFailedDrop) window.fqFailedDrop(id); syncAfter(); };
-  window.syncRetry = function (id) { sqUpdate(id, x => { x.state = 'pending'; x.err = ''; x.nextAt = 0; x.tries = Math.max(1, x.tries || 0); x.at = Date.now(); }); sq.refresh = true; syncPaint(); sqFlush(); };
+  window.syncRetry = function (id) { sqNeedsReload(sqRead().find(x => x.id === id)); sqUpdate(id, x => { x.state = 'pending'; x.err = ''; x.nextAt = 0; x.tries = Math.max(1, x.tries || 0); x.at = Date.now(); }); syncPaint(); sqFlush(); };
   window.syncDrop = function (id) {
-    const hk = sq.hooks[id];
+    const hk = sq.hooks[id], dropped = sqRead().find(x => x.id === id);
     sqWrite(sqRead().filter(x => x.id !== id));
     delete sq.hooks[id];
     if (hk && hk.undo) try { hk.undo(); } catch (e) {}
     if (hk && hk.resolve) hk.resolve(undefined);
     syncPaint();
-    if (!window.sqItems().length) { window.closeModal(); if (window.refreshAll) window.refreshAll(true); }
+    if (!window.sqItems().length) {
+      window.closeModal();
+      if (dropped && SQ_FIN_FN.test(dropped.fn) && window.finStale) window.finStale(); else if (window.refreshAll) window.refreshAll(true);
+    }
   };
   window.syncEdit = function (id) {
     const it = sqRead().find(x => x.id === id), hk = sq.hooks[id];
@@ -1130,6 +1140,8 @@
       if (window.coaches.some(c => String(c.id) === id)) window.openCoachProfile(id); else window.closeDetail();
     } else if (kind === 'session') {
       if (schedById(id)) window.openScheduleDetail(id); else window.closeDetail();
+    } else if (kind === 'bill') {
+      if (window.finRefreshBill) window.finRefreshBill(id);   // tagihan di luar data halaman: biarkan seperti adanya
     }
   }
   function highlightSelection() {
@@ -2186,7 +2198,7 @@
         case 'calendar': renderSchedule(); break;
         case 'clients': renderClients(); break;
         case 'coaches': renderCoaches(); break;
-        case 'finance': renderFinance(); break;
+        case 'finance': renderFinance(false, !!(opts && opts.animate)); break;
         case 'content': renderContentAdmin(); if (!cnt.list || (opts && opts.animate)) window.loadContentAdmin(); break;
         case 'settings': window.renderSettings(); break;
         case 'public-login': renderPublicLogin(); break;
@@ -2410,11 +2422,14 @@
   });
 
   // ── Tarik ke bawah untuk muat ulang ─────────────────────────────────────────
-  window.refreshAll = function () {
+  // internal = dipanggil kode (antrean simpan, lencana "Data HH:MM"): selalu muat semua. Tarik-untuk-segarkan (tanpa argumen) di
+  // halaman Keuangan hanya memuat Keuangan, diam-diam (2026-11, keluhan "refresh malah reload semua").
+  window.refreshAll = function (internal) {
     if (ui.pulling) return Promise.resolve();
     ui.pulling = true;
-    window._freshMore = true;   // tarik-untuk-segarkan: getAdminMore melewati cache server
-    const job = window.isPublicView ? window.loadPublicData() : window.loadAllData();
+    const finOnly = internal !== true && !window.isPublicView && window.currentView === 'finance' && window.finRefresh;
+    if (!finOnly) window._freshMore = true;   // tarik-untuk-segarkan: getAdminMore melewati cache server
+    const job = finOnly ? window.finRefresh() : window.isPublicView ? window.loadPublicData() : window.loadAllData();
     return Promise.resolve(job).catch(function () {}).then(function () { ui.pulling = false; });
   };
   function initPullRefresh() {
@@ -2609,7 +2624,7 @@
       return true;
     } catch (e) { return false; }
   }
-  function clearAdminCache() { window.offlineClear(); window.aqForget(); window.clientInsight = {}; _lsSet(ADMIN_CACHE_KEY, null); _lsSet('xnk_settings_cache', null); if (window.clearClientCache) window.clearClientCache(); if (window.clearCareCache) window.clearCareCache(); if (window.clearNutCache) window.clearNutCache(); if (window.wlForget) window.wlForget('admin'); if (window.obForget) window.obForget('admin'); }
+  function clearAdminCache() { window.offlineClear(); window.aqForget(); window.clientInsight = {}; _lsSet(ADMIN_CACHE_KEY, null); _lsSet('xnk_settings_cache', null); if (window.clearClientCache) window.clearClientCache(); if (window.clearFinCache) window.clearFinCache(); if (window.clearCareCache) window.clearCareCache(); if (window.clearNutCache) window.clearNutCache(); if (window.wlForget) window.wlForget('admin'); if (window.obForget) window.obForget('admin'); }
 
   // Bagian utama dimuat dulu; riwayat transaksi, PR, perpanjangan, pengaturan
   // dan omzet menyusul setelah layar tampil.
@@ -2727,6 +2742,8 @@
       if (ok(b.packageTrend)) { window._trendCache = window._trendCache || {}; window._trendCache[mo + '-' + yr] = b.packageTrend; }
       if (ok(b.hub)) { window._hub = b.hub; window._hubAt = Date.now(); }
       if (ok(b.memberVers)) { window.memberVers = b.memberVers; window.memberVersAt = Date.now(); }   // versi data per klien (salinan halaman klien)
+      if (b.finVer) window.finVer = b.finVer;   // versi keuangan: salinan xnk_fin_cache dipakai selama sama
+      if (window.finPrefetch) window.finPrefetch();   // Keuangan disiapkan di latar
       ui.revenue = ok(b.revenue) ? b.revenue : { error: true };
       renderRevenueKpi();
       window.updateUI();
@@ -4726,13 +4743,18 @@
     // Hero (kartu ink seperti dashboard): identitas, sisa sesi, tiga angka, aksi cepat
     body += '<div class="card-ink client-hero"><div class="row client-hero-id" style="gap:14px">' + avatar(m.photo, m.name, 'lg') +
       '<div class="grow" style="min-width:0"><h3 class="profile-name truncate">' + h(m.name) + '</h3><p class="muted" id="profile-phone">+' + h(m.phone) + '</p>' +
-      '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' + stPill + (m.packageName ? '<span class="pill">' + h(m.packageName) + '</span>' : '') + '</div></div></div>' +
+      '<div class="row" style="margin-top:8px;gap:6px;flex-wrap:wrap">' + stPill + '</div></div></div>' +
       '<div class="row client-ring-row"><div class="ring-wrap client-ring"><svg viewBox="0 0 120 120"><circle class="ring-track" cx="60" cy="60" r="52" fill="none" stroke-width="10"/>' +
       '<circle class="ring-fill" cx="60" cy="60" r="52" fill="none" stroke-width="10" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + C.toFixed(1) + '" data-offset="' + (C - pct * C).toFixed(1) + '"/></svg>' +
       '<div class="ring-center"><span class="num" style="font-size:var(--fs-3xl);font-weight:800" id="profile-remaining">' + rem + '</span><span class="eyebrow">dari <span id="profile-total">' + total + '</span></span></div></div>' +
       '<div class="grow stack" style="gap:6px"><p class="eyebrow">Sisa sesi</p><p style="font-size:var(--fs-xl);font-weight:800">' + (rem === 0 ? 'Kuota habis' : rem + ' sesi lagi') + '</p><p class="muted">' + used + ' terpakai · ' + doneCount + ' selesai</p></div></div>' +
       '<div class="btn-row client-hero-actions"><button type="button" class="btn btn-inverse" data-wa="' + h(m.phone) + '" onclick="window.sendToParentWA(this.getAttribute(\'data-wa\'),\'\')">' + icon('message-circle') + 'Chat WA</button>' +
-      '<button type="button" class="btn btn-ghost-ink" onclick="window.openBookingSheet({memberId:\'' + h(m.id) + '\'})">' + icon('calendar-plus') + 'Booking</button></div></div>';
+      '<button type="button" class="btn btn-ghost-ink" onclick="window.openBookingSheet({memberId:\'' + h(m.id) + '\'})">' + icon('calendar-plus') + 'Booking</button>' +
+      '</div>' +
+      // Baris paket: paket yang sedang dipakai + Perpanjang (lembar Klien baru terisi → addMember memperpanjang)
+      '<div class="client-pkg"><span class="cpk-ic">' + icon('package') + '</span>' +
+      '<div class="grow" style="min-width:0"><p class="eyebrow">Paket</p><p class="cpk-v truncate">' + h(m.packageName || 'Paket custom') + '</p></div>' +
+      '<button type="button" class="btn btn-sm ' + (rem === 0 ? 'btn-inverse' : 'btn-ghost-ink') + '" id="profile-renew" onclick="window.openRenewMember(\'' + h(m.id) + '\')">' + icon('repeat') + 'Perpanjang</button></div></div>';
     // Tab bagian halaman
     const tabs = [['ringkasan', 'Ringkasan', 'layout-dashboard'], ['progres', 'Progres', 'trending-up'], ['latihan', 'Latihan', 'dumbbell'], ['gizi', 'Gizi', 'apple']];
     // Data diperbarui (klien yang sama masih terbuka): tetap di tab terakhir, tidak lompat ke Ringkasan.
@@ -5353,10 +5375,36 @@
     el.value = id || '';
   };
 
+  // Lembar yang sama untuk "Klien baru" dan "Perpanjang paket" (halaman klien). Perpanjang = nomor
+  // yang sudah terdaftar, jadi addMember di server memperpanjang paket klien itu.
+  function memberSheetMode(renew) {
+    const f = $('form-add-member');
+    f.reset();
+    f.dataset.mode = renew ? 'renew' : '';
+    $('add-member-title').textContent = renew ? 'Perpanjang paket' : 'Klien baru';
+    $('member-submit').textContent = renew ? 'Perpanjang' : 'Simpan klien';
+    $('member-phone').readOnly = !!renew;
+    $('member-phone-hint').classList.toggle('hide', !!renew);
+  }
   window.openAddMemberModal = function () {
-    $('form-add-member').reset();
+    memberSheetMode(false);
     window.populateMemberPackageOptions('member', '');
     window.populateMemberCoachOptions('member-coach', '');
+    openSheet('modal-add-member');
+  };
+  window.openRenewMember = function (id) {
+    const m = window.members.find(x => String(x.id) === String(id));
+    if (!m) { window.showToast('Data klien tidak ditemukan.'); return; }
+    memberSheetMode(true);
+    $('member-name').value = m.name || '';
+    $('member-phone').value = String(m.phone || '').replace(/\D/g, '').replace(/^62/, '');
+    $('member-goal').value = m.goal || '';   // server menimpa kolom Tujuan, jadi bawa tujuan lama
+    const pkg = window.priceListData.some(p => String(p.id) === String(m.packageId)) ? m.packageId : '';
+    window.populateMemberPackageOptions('member', pkg);
+    if (pkg) window.selectPackageOption('member', pkg);   // isi total sesi dari paket
+    else if (Number(m.totalSessions) > 0) $('member-total-sessions').value = m.totalSessions;
+    $('member-used-sessions').value = 0;
+    window.populateMemberCoachOptions('member-coach', m.preferredCoachId || '');
     openSheet('modal-add-member');
   };
 
@@ -5393,7 +5441,7 @@
       }
       window.closeModal();
       window.updateUI();
-      window.showToast(res.renewed ? 'Paket klien diperpanjang.' : 'Klien ditambahkan.');
+      window.showToast(res.renewed ? 'Paket klien diperpanjang.' : (e.target.dataset.mode === 'renew' ? 'Nomor tidak cocok, tersimpan sebagai klien baru.' : 'Klien ditambahkan.'));
       if (res.waLink) window.showWaPrompt(res.waLink, res.renewed ? 'Kabari klien soal perpanjangan paketnya.' : 'Kirim info booking ke klien baru.');
       if (window.currentView === 'clients') window.openProfile(res.id);
     }).catch(function (err) { done(); window.showToast(waitErr(err, 'Gagal: ')); });
@@ -10870,8 +10918,18 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) tickClocks(); });
 
   // ── Keuangan (Fase H): tagihan, pembayaran, pengeluaran, laporan ─────────────
+  // Cepat (2026-11, keluhan coach "lama load / detail lama / lunasi lama / refresh malah reload"):
+  // - Satu panggilan getFinancePage(bulan) membawa ringkasan, tagihan + pembayarannya, pengeluaran, kategori, metode.
+  //   Tab, filter dan detail tagihan disaring di browser, tanpa panggilan lagi.
+  // - Salinan di perangkat xnk_fin_cache (keputusan pemilik 2026-11-25, pengecualian aturan "data keuangan tidak di
+  //   perangkat"): per tanda tangan token admin, dihapus saat keluar / sesi habis (clearAdminCache), tidak pernah di
+  //   xnk_admin_cache. Halaman langsung tampil dari salinan; server hanya ditanya bila versi keuangan (getAdminMore.finVer)
+  //   berubah, hari berganti, salinan tua, atau halaman dibuka lagi setelah > 1 menit — diam-diam, layar tidak dikosongkan.
+  // - Pembayaran tanpa foto langsung mengubah tagihan, ringkasan dan panel di layar (undo bila server menolak).
   const FIN_STATUS_PILL = { 'Lunas': 'pill solid', 'DP': 'pill', 'Belum bayar': 'pill dashed' };
-  const fin = { month: new Date().getMonth() + 1, year: new Date().getFullYear(), tab: 'bills', filter: 'open', ov: null, bills: null, exps: null, arrears: null, cats: null, methods: ['Tunai', 'Transfer bank', 'QRIS / e-wallet'], portal: false, billId: null, payPick: '', payId: null, expId: null, proof: null };
+  const FIN_CACHE_KEY = 'xnk_fin_cache', FIN_RECENT = 60000, FIN_MAX_AGE = 6 * 3600000, FIN_OVS_MAX = 12;
+  const fin = { month: new Date().getMonth() + 1, year: new Date().getFullYear(), tab: 'bills', filter: 'open', ov: null, bills: null, exps: null, arrears: null, cats: null, methods: ['Tunai', 'Transfer bank', 'QRIS / e-wallet'], portal: false, billId: null, payPick: '', payId: null, expId: null, proof: null,
+    data: null, ovs: {}, at: 0, ver: '', day: '', loaded: false, inflight: null, err: '', barsKey: '', soon: 0, q: '', lunasId: '', autoOpen: false, foldOpen: null };
   const finRp = function (n) { return (n < 0 ? '−' : '') + 'Rp ' + String(Math.abs(Math.round(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
   const finNum = function (s) { return parseInt(String(s || '').replace(/\D/g, ''), 10) || 0; };
   // S14: angka ringkas untuk tile ("Rp 2,3 jt", "Rp 850 rb"); angka penuh tetap di title / aria-label.
@@ -10896,59 +10954,165 @@
   function finErr(err) { window.showToast(waitErr(err, 'Gagal: ')); }   // gangguan sementara: kalimat tenang
   function finMonthLabel() { return MONTHS[fin.month - 1] + ' ' + fin.year; }
   function finToday() { return ymd(new Date()); }
+  const finMk = function (y, m) { return y + '-' + ('0' + m).slice(-2); };
+  const finWibDay = function () { return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); };
+
+  // ── Salinan di perangkat ──────────────────────────────────────────────────
+  function finCacheRead() {
+    const t = _lsGet(ADMIN_TOKEN_KEY);
+    if (!t) return null;
+    try { const c = JSON.parse(localStorage.getItem(FIN_CACHE_KEY) || 'null'); return c && c.v === 1 && c.th === tokenSig(t) && c.data && Array.isArray(c.data.bills) ? c : null; } catch (e) { return null; }
+  }
+  function finCacheSave() {
+    const t = _lsGet(ADMIN_TOKEN_KEY);
+    if (!t || !fin.data) return;
+    // Ringkasan bulan lain: simpan paling banyak 12, yang terbaru dilihat lebih dulu dipertahankan.
+    const keys = Object.keys(fin.ovs).sort().reverse().slice(0, FIN_OVS_MAX), ovs = {};
+    keys.forEach(function (k) { ovs[k] = fin.ovs[k]; });
+    const noTmp = function (list) { return (list || []).filter(function (x) { return !window.isTmpId(x.id); }); };
+    const data = Object.assign({}, fin.data, { payments: noTmp(fin.data.payments), expenses: noTmp(fin.data.expenses) });
+    const c = { v: 1, th: tokenSig(t), at: fin.at, ver: fin.ver, day: fin.day, data: data, ovs: ovs };
+    try { localStorage.setItem(FIN_CACHE_KEY, JSON.stringify(c)); } catch (e) { try { localStorage.removeItem(FIN_CACHE_KEY); } catch (e2) {} }
+  }
+  window.clearFinCache = function () {
+    try { localStorage.removeItem(FIN_CACHE_KEY); } catch (e) {}
+    fin.data = null; fin.ovs = {}; fin.at = 0; fin.ver = ''; fin.day = ''; fin.loaded = false; fin.detail = null; fin.cats = null;
+  };
+  function finBoot() {
+    if (fin.loaded) return;
+    fin.loaded = true;
+    const c = finCacheRead();
+    if (!c) return;
+    fin.data = c.data; fin.ovs = c.ovs || {}; fin.at = c.at || 0; fin.ver = c.ver || ''; fin.day = c.day || '';
+    if (c.data.cats) fin.cats = c.data.cats;
+    if (c.data.methods && c.data.methods.length) fin.methods = c.data.methods;
+  }
+
+  // ── Data turunan untuk tab / filter yang sedang dipilih ───────────────────
+  function finOpenList() { return fin.data.bills.filter(function (b) { return !b.archived && b.status !== 'Lunas'; }); }
+  function finDerive() {
+    const mk = finMk(fin.year, fin.month), d = fin.data;
+    const rev = ui.revenue && ui.revenue.fin && ui.revenue.o;   // bulan berjalan dari getAdminMore: angka langsung ada sebelum salinan pertama
+    fin.ov = fin.ovs[mk] || (rev && rev.month === fin.month && rev.year === fin.year ? rev : null);
+    if (!d) { fin.bills = fin.exps = fin.arrears = null; return; }
+    const inWin = mk >= d.from;   // bulan lebih lama dari jendela 12 bulan: tunggu getFinancePage bulan itu
+    const inMonth = function (x) { return String(x.date).slice(0, 7) === mk; };
+    fin.arrears = finOpenList();
+    if (fin.filter === 'open') fin.bills = fin.arrears;
+    else if (fin.filter === 'arsip') fin.bills = d.bills.filter(function (b) { return b.archived; });
+    else fin.bills = inWin ? d.bills.filter(function (b) { return !b.archived && inMonth(b) && (fin.filter === 'all' || b.status === fin.filter); }) : null;
+    // Cari: setiap kata yang diketik harus ada di nama atau paket (urutan bebas).
+    const words = String(fin.q || '').toLowerCase().split(/\s+/).filter(Boolean);
+    if (fin.bills && words.length) fin.bills = fin.bills.filter(function (b) { const s = (b.name + ' ' + b.packageName).toLowerCase(); return words.every(function (w) { return s.indexOf(w) !== -1; }); });
+    const arsip = fin.tab === 'exps' && fin.filter === 'arsip';
+    fin.exps = inWin ? d.expenses.filter(function (e) { return inMonth(e) && e.archived === arsip; }) : null;
+  }
+  function finPaint() {
+    const mEl = $('fin-month'); if (mEl) mEl.textContent = finMonthLabel();
+    finDerive(); finRenderHead(); finRenderList();
+    if (ui.detail && /^bill:/.test(ui.detail)) refreshDetail(); else finAutoOpen();
+  }
+
+  // ── Muat dari server (diam-diam, tidak pernah mengosongkan layar) ─────────
+  // opts.force: selalu tanya server; opts.fresh: lewati cache server (tarik-untuk-segarkan); opts.open: halaman baru dibuka.
+  function finNeeds(opts) {
+    const mk = finMk(fin.year, fin.month), now = Date.now();
+    if (opts.force || !fin.data || !fin.ovs[mk] || mk < fin.data.from) return true;
+    if (now - fin.at > FIN_MAX_AGE || fin.day !== finWibDay() || !fin.ver) return true;
+    if (window.finVer && window.finVer !== fin.ver) return true;
+    return !!opts.open && now - fin.at > FIN_RECENT;
+  }
+  function finLoad(opts) {
+    opts = opts || {};
+    if (!finOn() || !_lsGet(ADMIN_TOKEN_KEY)) return Promise.resolve();
+    finBoot();
+    if (!finNeeds(opts)) return Promise.resolve();
+    const m = fin.month, y = fin.year;
+    if (fin.inflight && fin.inflight.m === m && fin.inflight.y === y && !opts.force) return fin.inflight.p;
+    const snap = window.wqSnap();
+    const job = { m: m, y: y };
+    job.p = adminCall('getFinancePage', m, y, !!opts.fresh).then(function (r) {
+      if (!r || !Array.isArray(r.bills) || !_lsGet(ADMIN_TOKEN_KEY)) return;
+      // Simpanan keuangan sedang berjalan: layar (optimistic) lebih baru dari jawaban ini. Ambil lagi setelah antrean kosong.
+      if (window.wqStale(snap)) { window.wqOnIdle('fin-page', function () { finLoad({ force: true }); }); return; }
+      fin.ovs[finMk(r.year, r.month)] = r.overview;
+      fin.data = { from: r.from, bills: r.bills, payments: r.payments || [], expenses: r.expenses || [], cats: r.cats || [], methods: r.methods || [] };
+      fin.cats = fin.data.cats;
+      if (fin.data.methods.length) fin.methods = fin.data.methods;
+      fin.portal = !!r.portalVisible;
+      fin.at = Date.now(); fin.ver = r.ver || ''; fin.day = r.day || finWibDay(); fin.err = '';
+      if (fin.ver) window.finVer = fin.ver;   // versi terbaru yang diketahui (getAdminMore bisa lebih tua setelah simpan sendiri)
+      finCacheSave();
+      if (window.currentView === 'finance') finPaint();
+    }).catch(function (err) {
+      if (window.isAuthError && window.isAuthError(err)) return;
+      fin.err = waitErr(err);
+      if (window.currentView !== 'finance') return;
+      if (!fin.data) finRenderList(); else if (opts.force) finErr(err);   // ada salinan: tetap tampil, cukup kabar singkat saat diminta
+    }).then(function () { if (fin.inflight === job) fin.inflight = null; });
+    fin.inflight = job;
+    return job.p;
+  }
+  // Muat ulang diam-diam sebentar lagi (sesudah simpanan selesai), sekali walau dipanggil berkali-kali.
+  function finReloadSoon() {
+    fin.ver = '';
+    clearTimeout(fin.soon);
+    fin.soon = setTimeout(function () { if (window.currentView === 'finance') finLoad({ force: true }); }, 1500);
+  }
+  window.finRefresh = function () { return finLoad({ force: true, fresh: true }); };
+  // Siapkan di latar (keputusan pemilik 2026-11-25): setelah data panel datang, Keuangan dimuat diam-diam (hanya bila
+  // salinannya perlu diperbarui), supaya ketukan pertama pada menu Keuangan pun langsung berisi.
+  window.finPrefetch = function () {
+    if (!finOn() || ui.mode !== 'admin' || navigator.onLine === false) return;
+    clearTimeout(fin.pre);
+    fin.pre = setTimeout(function () { if (window.currentView !== 'finance') finLoad(); }, 2500);
+  };   // tarik-untuk-segarkan di halaman Keuangan
+  window.finStale = function () { fin.ver = ''; fin.at = 0; if (window.currentView === 'finance') finLoad({ force: true }); };
 
   window.finGo = function () { if (finOn()) window.navigate('finance'); };
   window.finMonth = function (d) {
     let m = fin.month + d, y = fin.year;
     if (m < 1) { m = 12; y--; } else if (m > 12) { m = 1; y++; }
     fin.month = m; fin.year = y;
+    finPaint();
     finLoad();
   };
-  window.finTab = function (t) { fin.tab = t; fin.filter = t === 'bills' ? 'open' : 'all'; renderFinance(true); finLoadTab(); };
-  window.finFilter = function (f) { fin.filter = f; finLoadTab(); finRenderList(); };
+  window.finTab = function (t) { fin.tab = t; fin.filter = t === 'bills' ? 'open' : 'all'; renderFinance(true); finLoad(); };
+  window.finFilter = function (f) { fin.filter = f; finDerive(); finRenderList(); finLoad(); };
 
-  function renderFinance(keepData) {
+  // open = halaman baru dibuka lewat menu (bukan render ulang karena data lain berubah).
+  function renderFinance(keepData, open) {
     const el = $('view-finance');
     if (!el) return;
     if (!finOn()) { el.innerHTML = emptyState('wallet', 'Keuangan belum aktif', 'Nyalakan di Pengaturan → Keuangan.', '<button type="button" class="btn btn-secondary btn-sm" onclick="window.navigate(\'settings\')">Buka Pengaturan</button>'); paintIcons(); return; }
+    finBoot();
+    // Bagian = satu bar segmen (seperti tab halaman Klien / Coach); filter = tab teks ringan di bawahnya (finChip).
     const tabs = [['bills', 'Tagihan'], ['exps', 'Pengeluaran'], ['report', 'Laporan']].map(function (t) {
-      return '<button type="button" class="chip' + (fin.tab === t[0] ? ' active' : '') + '" onclick="window.finTab(\'' + t[0] + '\')">' + t[1] + '</button>';
+      return '<button type="button" role="tab" aria-selected="' + (fin.tab === t[0]) + '" class="' + (fin.tab === t[0] ? 'active' : '') + '" onclick="window.finTab(\'' + t[0] + '\')">' + t[1] + '</button>';
     }).join('');
     el.innerHTML = '<div class="page-head"><div><h1 class="page-title">Keuangan</h1><p class="page-sub">Tagihan, pembayaran, dan pengeluaran</p></div>' +
       '<div class="btn-row"><button type="button" class="btn btn-secondary btn-sm" onclick="window.finOpenExpense(null)">' + icon('receipt') + 'Pengeluaran</button>' +
       '<button type="button" class="btn btn-primary btn-sm" onclick="window.finOpenPayment(null)">' + icon('banknote') + 'Pembayaran</button></div></div>' +
       '<div class="stack" style="gap:var(--gap)"><div class="row-between"><button type="button" class="icon-btn" onclick="window.finMonth(-1)" aria-label="Bulan sebelumnya">' + icon('chevron-left') + '</button>' +
       '<b id="fin-month">' + h(finMonthLabel()) + '</b><button type="button" class="icon-btn" onclick="window.finMonth(1)" aria-label="Bulan berikutnya">' + icon('chevron-right') + '</button></div>' +
-      '<div id="fin-head"></div><div class="fin-bar"><div class="chips" role="tablist" aria-label="Bagian keuangan">' + tabs + '</div><div id="fin-filters"></div></div><div id="fin-list" class="stack"></div></div>';
+      '<div id="fin-head"></div><div class="fin-bar"><div class="seg fin-seg" role="tablist" aria-label="Bagian keuangan">' + tabs + '</div><div id="fin-filters"></div>' +
+      (fin.tab === 'bills' ? '<div class="fin-search"><span class="fin-search-ic">' + icon('search') + '</span><input class="input" type="search" id="fin-q" placeholder="Cari nama klien" autocomplete="off" enterkeyhint="search" aria-label="Cari nama klien" value="' + h(fin.q) + '" oninput="window.finSearch(this.value)"></div>' : '') +
+      '</div><div id="fin-list" class="stack"></div></div>';
     paintIcons();
+    finDerive();
     finRenderHead();
     finRenderList();
-    if (!keepData) finLoad();
+    if (open) fin.autoOpen = true;
+    finAutoOpen();
+    if (!keepData) finLoad({ open: !!open });
   }
-  function finLoad() {
-    fin.ov = null; fin.bills = null; fin.exps = null; fin.arrears = null;
-    const mEl = $('fin-month'); if (mEl) mEl.textContent = finMonthLabel();
-    finRenderHead(); finRenderList();
-    adminCall('getFinanceOverview', fin.month, fin.year).then(function (ov) { fin.ov = ov; finRenderHead(); finRenderList(); }).catch(finErr);
-    finLoadTab();
-  }
-  function finLoadTab() {
-    const m = fin.month, y = fin.year;
-    if (fin.tab === 'bills') {
-      const f = fin.filter, q = {};
-      if (f === 'arsip') q.archived = true;
-      else if (f === 'open') q.status = 'open';
-      else { q.month = m; q.year = y; if (f !== 'all') q.status = f; }
-      fin.bills = null; finRenderList();
-      adminCall('getBills', q).then(function (r) { fin.bills = r; finRenderList(); }).catch(finErr);
-    } else if (fin.tab === 'exps') {
-      fin.exps = null; finRenderList();
-      adminCall('getExpenses', { month: m, year: y, archived: fin.filter === 'arsip' }).then(function (r) { fin.exps = r; finRenderList(); }).catch(finErr);
-    } else {
-      fin.exps = null; fin.arrears = null; finRenderList();
-      adminCall('getExpenses', { month: m, year: y }).then(function (r) { fin.exps = r; finRenderList(); }).catch(finErr);
-      adminCall('getBills', { status: 'open' }).then(function (r) { fin.arrears = r; finRenderList(); }).catch(finErr);
-    }
+  window.finSearch = function (v) { fin.q = v; finDerive(); finRenderList(); };
+  // Desktop (>= 1024 px): daftar kiri, detail tagihan kanan. Tagihan pertama dibuka sendiri sekali per kunjungan halaman.
+  function finAutoOpen() {
+    if (!fin.autoOpen || window.innerWidth < 1024 || fin.tab !== 'bills' || !fin.bills || !fin.bills.length) return;
+    fin.autoOpen = false;
+    const first = document.querySelector('#fin-list .fin-bill');   // baris teratas di layar (kelompok Telat lebih dulu)
+    if (!ui.detail && first) window.finOpenBill(first.getAttribute('data-key').slice(5));
   }
   function finRenderHead() {
     const el = $('fin-head');
@@ -10960,55 +11124,192 @@
     };
     let bars = '';
     const ser = o ? o.series.filter(function (x) { return x.masuk || x.keluar; }) : [];
-    if (o && !ser.length) bars = '<div class="card-flat"><div class="section-head"><h4 class="li-title">6 bulan terakhir</h4><span class="li-sub">masuk vs keluar</span></div><p class="li-sub" style="min-height:44px;display:flex;align-items:center">Belum ada data.</p></div>';
+    // Batang tumbuh hanya saat angkanya baru; render ulang dengan angka yang sama langsung di tinggi akhir (tidak berkedip).
+    const bkey = o ? JSON.stringify(o.series) : '', grow = bkey !== fin.barsKey;
+    const fold = function (body) {
+      const open = fin.foldOpen === null ? window.innerWidth >= 768 : fin.foldOpen;
+      return '<details class="fold fin-fold"' + (open ? ' open' : '') + ' ontoggle="window.finFold(this)"><summary><span class="fold-t">6 bulan terakhir</span><span class="fold-m">masuk vs keluar</span>' +
+        '<span class="fold-chev" aria-hidden="true">' + icon('chevron-down') + '</span></summary><div class="fold-body">' + body + '</div></details>';
+    };
+    if (o && !ser.length) bars = fold('<p class="li-sub" style="min-height:44px;display:flex;align-items:center">Belum ada data.</p>');
     else if (o) {
       const max = Math.max(1, Math.max.apply(null, o.series.map(function (s) { return Math.max(s.masuk, s.keluar); })));
-      bars = '<div class="card-flat"><div class="section-head"><h4 class="li-title">6 bulan terakhir</h4><span class="li-sub">masuk vs keluar</span></div><div class="bars" id="fin-bars">' +
+      const bar = function (cls, v) {
+        const hh = Math.max(v ? 6 : 2, Math.round(v / max * 100));
+        return '<div class="' + cls + '" data-h="' + hh + '" data-tip="' + h(finRp(v)) + '"' + (grow ? '' : ' style="height:' + hh + '%"') + '></div>';
+      };
+      bars = fold('<div class="bars" id="fin-bars">' +
         ser.map(function (s) {
-          return '<div class="bar-col"><div class="bar-track" style="gap:3px;align-items:flex-end"><div class="bar" data-h="' + Math.max(s.masuk ? 6 : 2, Math.round(s.masuk / max * 100)) + '" data-tip="' + h(finRp(s.masuk)) + '"></div>' +
-            '<div class="bar soft" data-h="' + Math.max(s.keluar ? 6 : 2, Math.round(s.keluar / max * 100)) + '" data-tip="' + h(finRp(s.keluar)) + '"></div></div><span class="bar-lbl">' + MONTHS[s.month - 1].slice(0, 3) + '</span></div>';
-        }).join('') + '</div></div>';
+          return '<div class="bar-col"><div class="bar-track" style="gap:3px;align-items:flex-end">' + bar('bar', s.masuk) + bar('bar soft', s.keluar) + '</div><span class="bar-lbl">' + MONTHS[s.month - 1].slice(0, 3) + '</span></div>';
+        }).join('') + '</div>');
     }
-    el.innerHTML = '<div class="kpi-grid">' + k('Masuk', o && o.masuk, 'Pembayaran diterima', 'arrow-down-left') + k('Keluar', o && o.keluar, 'Pengeluaran', 'arrow-up-right') +
+    el.innerHTML = '<div class="kpi-grid fin-kpis">' + k('Masuk', o && o.masuk, 'Pembayaran diterima', 'arrow-down-left') + k('Keluar', o && o.keluar, 'Pengeluaran', 'arrow-up-right') +
       k('Laba', o && o.laba, 'Masuk − keluar', 'trending-up') + k('Tunggakan', o && o.tunggakan, o ? o.openBills + ' tagihan belum lunas' : '', 'clock', 'window.finFilter(\'open\');window.finTab(\'bills\')') + '</div>' + bars;
     paintIcons();
-    el.querySelectorAll('.bar').forEach(function (b, i) { setTimeout(function () { b.style.height = b.getAttribute('data-h') + '%'; }, 40 + i * 30); });
+    if (o && grow) {
+      fin.barsKey = bkey;
+      el.querySelectorAll('.bar').forEach(function (b, i) { setTimeout(function () { b.style.height = b.getAttribute('data-h') + '%'; }, 40 + i * 30); });
+    }
   }
-  function finChip(label, val) { return '<button type="button" class="chip' + (fin.filter === val ? ' active' : '') + '" onclick="window.finFilter(\'' + val + '\')">' + label + '</button>'; }
+  window.finFold = function (el) { fin.foldOpen = el.open; };
+  // Jumlah per filter dari data halaman (tanpa panggilan); kosong bila datanya belum ada.
+  function finCount(val) {
+    const d = fin.data;
+    if (!d) return '';
+    const mk = finMk(fin.year, fin.month), inMonth = function (x) { return String(x.date).slice(0, 7) === mk; };
+    if (fin.tab === 'exps') return val === 'arsip' ? d.expenses.filter(function (e) { return e.archived && inMonth(e); }).length : d.expenses.filter(function (e) { return !e.archived && inMonth(e); }).length;
+    if (val === 'open') return d.bills.filter(function (b) { return !b.archived && b.status !== 'Lunas'; }).length;
+    if (val === 'arsip') return d.bills.filter(function (b) { return b.archived; }).length;
+    if (mk < d.from) return '';
+    return d.bills.filter(function (b) { return !b.archived && inMonth(b) && (val === 'all' || b.status === val); }).length;
+  }
+  function finChip(label, val) {
+    const n = finCount(val), on = fin.filter === val;
+    return '<button type="button" role="tab" aria-selected="' + on + '" class="fin-filt-b' + (on ? ' active' : '') + '" onclick="window.finFilter(\'' + val + '\')">' + label + (n === '' ? '' : '<span class="num">' + n + '</span>') + '</button>';
+  }
+  function finListWait() {
+    if (fin.err && !fin.data && !fin.inflight) return errorState(fin.err, 'window.finStale()');
+    return '<div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:64px"></div>';
+  }
   function finRenderList() {
     const el = $('fin-list'), fl = $('fin-filters');
     if (!el || !fl) return;
-    const skel = '<div class="skeleton" style="height:64px"></div><div class="skeleton" style="height:64px"></div>';
     if (fin.tab === 'bills') {
-      fl.innerHTML = '<div class="chips">' + finChip('Belum lunas', 'open') + finChip('Semua bulan ini', 'all') + finChip('DP', 'DP') + finChip('Lunas', 'Lunas') + finChip('Arsip', 'arsip') + '</div>';
-      if (!fin.bills) { el.innerHTML = skel; return; }
-      el.innerHTML = fin.bills.length ? '<div class="list">' + fin.bills.map(finBillRow).join('') + '</div>' : emptyState('receipt', fin.filter === 'open' ? 'Tidak ada tunggakan' : 'Belum ada tagihan', 'Tagihan dibuat otomatis saat ada paket baru atau perpanjangan.');
+      fl.innerHTML = '<div class="fin-filt" role="tablist" aria-label="Saring tagihan">' + finChip('Belum lunas', 'open') + finChip('Bulan ini', 'all') + finChip('DP', 'DP') + finChip('Lunas', 'Lunas') + finChip('Arsip', 'arsip') + '</div>';
+      if (!fin.bills) { el.innerHTML = finListWait(); paintIcons(); return; }
+      if (!fin.bills.length && fin.q) { el.innerHTML = emptyState('search', 'Tidak ada yang cocok', 'Coba nama lain, atau pilih filter lain.'); paintIcons(); return; }
+      el.innerHTML = fin.bills.length ? '<div class="list">' + finGroupedRows(fin.bills) + '</div>' : emptyState('receipt', fin.filter === 'open' ? 'Tidak ada tunggakan' : 'Belum ada tagihan', 'Tagihan dibuat otomatis saat ada paket baru atau perpanjangan.');
     } else if (fin.tab === 'exps') {
-      fl.innerHTML = '<div class="chips">' + finChip('Bulan ini', 'all') + finChip('Arsip', 'arsip') + '</div>';
-      if (!fin.exps) { el.innerHTML = skel; return; }
+      fl.innerHTML = '<div class="fin-filt" role="tablist" aria-label="Saring pengeluaran">' + finChip('Bulan ini', 'all') + finChip('Arsip', 'arsip') + '</div>';
+      if (!fin.exps) { el.innerHTML = finListWait(); paintIcons(); return; }
       el.innerHTML = fin.exps.length ? '<div class="list">' + fin.exps.map(finExpRow).join('') + '</div>' : emptyState('receipt', 'Belum ada pengeluaran', 'Catat sewa tempat, alat, iklan, dan lainnya.', '<button type="button" class="btn btn-secondary btn-sm" onclick="window.finOpenExpense(null)">' + icon('plus') + 'Pengeluaran</button>');
     } else {
       fl.innerHTML = '';
       el.innerHTML = finReportHtml();
     }
     paintIcons();
+    highlightSelection();
   }
-  // Dua baris: nama + sisa tagihan (besar, kanan), lalu paket · tanggal · status.
+  // Kelompok di Belum lunas / Semua bulan ini: Telat (belum lunas > 3 hari, sama dengan pengingat Tagihan), Belum bayar, DP, Lunas.
+  // Label: jumlah tagihan + total sisa (Lunas: total dibayar). Filter DP / Lunas / Arsip: satu daftar tanpa kelompok.
+  const FIN_LATE_DAYS = 3;
+  function finGroupOf(b) { return b.remaining > 0 && b.ageDays > FIN_LATE_DAYS ? 'Telat' : b.status; }
+  function finGroupedRows(list) {
+    if (fin.filter !== 'open' && fin.filter !== 'all') return list.map(finBillRow).join('');
+    return ['Telat', 'Belum bayar', 'DP', 'Lunas'].map(function (g) {
+      const rows = list.filter(function (b) { return finGroupOf(b) === g; });
+      if (!rows.length) return '';
+      if (g === 'Telat') rows.sort(function (a, b) { return b.ageDays - a.ageDays; });   // paling lama di atas
+      const sum = rows.reduce(function (s, b) { return s + (g === 'Lunas' ? b.paid : b.remaining); }, 0);
+      return '<div class="group-label fin-group"><span>' + h(g === 'Telat' ? 'Telat · lebih dari ' + FIN_LATE_DAYS + ' hari' : g) + ' · ' + rows.length + '</span><span class="num">' + h(finRp(sum)) + '</span></div>' + rows.map(finBillRow).join('');
+    }).join('');
+  }
+  // Dua baris: nama + sisa tagihan (besar, kanan), lalu paket · tanggal · status, dan Lunasi untuk tagihan yang belum lunas.
   function finBillRow(b) {
     const right = b.archived ? '<button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();window.finRestore(\'bill\',\'' + h(b.id) + '\')">Pulihkan</button>'
       : '<b class="num fin-bill-amt">' + h(finRp(b.remaining || 0)) + '</b>';
-    return '<div class="list-item fin-bill" data-key="bill:' + h(b.id) + '" role="button" tabindex="0" onclick="window.finOpenBill(\'' + h(b.id) + '\')">' +
+    const late = !b.archived && b.remaining > 0 && b.ageDays > FIN_LATE_DAYS ? ' · ' + b.ageDays + ' hari' : '';
+    const pay = !b.archived && b.remaining > 0 ? '<button type="button" class="btn btn-outline btn-sm fin-row-pay" onclick="event.stopPropagation();window.finLunas(\'' + h(b.id) + '\')">' + icon('check') + 'Lunasi</button>' : '';
+    const row = '<div class="list-item fin-bill" data-key="bill:' + h(b.id) + '" role="button" tabindex="0" onclick="window.finOpenBill(\'' + h(b.id) + '\')">' +
       '<div class="fin-bill-top"><p class="li-title clamp-2">' + h(b.name || '(Tanpa nama)') + '</p>' + right + '</div>' +
-      '<div class="fin-bill-sub"><span class="li-sub">' + h(b.packageName) + ' · ' + h(b.date) + '</span>' + (b.archived ? '' : '<span class="' + FIN_STATUS_PILL[b.status] + '">' + h(b.status) + '</span>') + '</div></div>';
+      '<div class="fin-bill-sub"><span class="li-sub">' + h(b.packageName) + ' · ' + h(b.date) + late + '</span>' + (b.archived ? '' : '<span class="fin-bill-tags"><span class="' + FIN_STATUS_PILL[b.status] + '">' + h(b.status) + '</span>' + pay + '</span>') + '</div></div>';
+    if (b.archived || !(b.remaining > 0)) return row;
+    // HP: geser kiri membuka WA tagih + Lunasi di belakang baris (tombol Lunasi di baris tetap ada untuk yang tidak menggeser).
+    const acts = (b.phone ? '<button type="button" class="fin-swipe-btn" tabindex="-1" onclick="window.finSwipeAct(\'wa\',\'' + h(b.id) + '\')">' + icon('message-circle') + '<span>WA tagih</span></button>' : '') +
+      '<button type="button" class="fin-swipe-btn solid" tabindex="-1" onclick="window.finSwipeAct(\'lunas\',\'' + h(b.id) + '\')">' + icon('check') + '<span>Lunasi</span></button>';
+    return '<div class="fin-swipe"><div class="fin-swipe-acts only-mobile" aria-hidden="true">' + acts + '</div>' + row + '</div>';
   }
+  window.finSwipeAct = function (kind, id) {
+    finSwipeClose();
+    if (kind === 'lunas') { window.finLunas(id); return; }
+    const b = finBillById(id);
+    if (b) { fin.detail = { bill: b, payments: finPaysOf(id) }; window.finBill_wa(id); }
+  };
+  function finSwipeClose(except) {
+    document.querySelectorAll('#fin-list .fin-swipe.open').forEach(function (w) { if (w !== except) { w.classList.remove('open'); w.querySelector('.fin-bill').style.transform = ''; } });
+  }
+  // Satu pendengar untuk seluruh daftar (baris digambar ulang, pendengar tidak ikut hilang). Hanya < 768 px dan sentuhan.
+  (function finSwipeInit() {
+    let w = null, x0 = 0, y0 = 0, dx = 0, mode = '', width = 0;
+    document.addEventListener('touchstart', function (e) {
+      const t = e.target.closest && e.target.closest('#fin-list .fin-swipe');
+      if (!t || window.innerWidth >= 768 || e.touches.length !== 1) { if (!t) finSwipeClose(); w = null; return; }
+      finSwipeClose(t);
+      w = t; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; mode = '';
+      width = (t.querySelector('.fin-swipe-acts') || {}).offsetWidth || 0;
+    }, { passive: true });
+    document.addEventListener('touchmove', function (e) {
+      if (!w) return;
+      const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+      if (!mode) { if (Math.abs(mx) < 8 && Math.abs(my) < 8) return; mode = Math.abs(mx) > Math.abs(my) ? 'x' : 'y'; }
+      if (mode !== 'x') return;
+      const base = w.classList.contains('open') ? -width : 0;
+      dx = Math.max(-width - 24, Math.min(0, base + mx));
+      const row = w.querySelector('.fin-bill');
+      w.classList.add('drag');
+      row.style.transition = 'none';
+      row.style.transform = 'translateX(' + dx + 'px)';
+    }, { passive: true });
+    document.addEventListener('touchend', function () {
+      if (!w || mode !== 'x') { w = null; return; }
+      const row = w.querySelector('.fin-bill'), open = dx < -width / 2;
+      w.classList.remove('drag');
+      row.style.transition = '';
+      row.style.transform = open ? 'translateX(' + (-width) + 'px)' : '';
+      w.classList.toggle('open', open);
+      // Ketukan sesudah menggeser bukan "buka detail".
+      const stop = function (ev) { ev.stopPropagation(); ev.preventDefault(); };
+      row.addEventListener('click', stop, { capture: true, once: true });
+      setTimeout(function () { row.removeEventListener('click', stop, { capture: true }); }, 350);
+      w = null;
+    });
+  })();
   function finExpRow(e) {
     return '<div class="list-item" role="button" tabindex="0" onclick="window.finOpenExpense(\'' + h(e.id) + '\')" style="min-height:56px">' +
       '<div style="min-width:0"><p class="li-title truncate">' + h(e.category) + (e.note ? ' · ' + h(e.note) : '') + '</p><p class="li-sub">' + h(e.date) + ' · ' + h(e.method) + (e.hasProof ? ' · 📎' : '') + '</p></div>' +
       '<span class="li-trail">' + (e.archived ? '<button type="button" class="btn btn-outline btn-sm" onclick="event.stopPropagation();window.finRestore(\'expense\',\'' + h(e.id) + '\')">Pulihkan</button>' : '<b class="num">' + h(finRp(e.amount)) + '</b>') + '</span></div>';
   }
+  // Laporan (2026-11): dibanding bulan lalu, metode bayar, dan rata-rata hari sampai lunas. Semua dihitung di browser dari data
+  // halaman (ringkasan 6 bulan + pembayaran + tagihan 12 bulan), tanpa panggilan baru.
+  function finPct(now, prev) {
+    if (!prev) return now ? 'baru' : '–';
+    const p = Math.round((now - prev) / Math.abs(prev) * 100);
+    return (p > 0 ? '+' : p < 0 ? '−' : '') + Math.abs(p) + '%';
+  }
+  function finInsightHtml() {
+    const o = fin.ov, d = fin.data, mk = finMk(fin.year, fin.month);
+    let html = '';
+    if (o && o.series && o.series.length >= 2) {
+      const cur = o.series[o.series.length - 1], prev = o.series[o.series.length - 2];
+      const row = function (label, a, b) {
+        return '<div><p class="k">' + label + '</p><p class="v num">' + h(finRpShort(a)) + '</p><p class="li-sub">' + h(finPct(a, b)) + ' dari ' + h(finRpShort(b)) + '</p></div>';
+      };
+      html += '<div class="card-flat stack"><h4 class="li-title">Dibanding ' + h(MONTHS[prev.month - 1]) + '</h4><div class="kv fin-cmp">' +
+        row('Masuk', cur.masuk, prev.masuk) + row('Keluar', cur.keluar, prev.keluar) + row('Laba', cur.masuk - cur.keluar, prev.masuk - prev.keluar) + '</div></div>';
+    }
+    if (d) {
+      const by = {}, pays = d.payments.filter(function (p) { return !p.archived && String(p.date).slice(0, 7) === mk && !window.isTmpId(p.id); });
+      pays.forEach(function (p) { by[p.method || 'Lainnya'] = (by[p.method || 'Lainnya'] || 0) + p.amount; });
+      const keys = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }), tot = keys.reduce(function (s, k) { return s + by[k]; }, 0) || 1;
+      html += '<div class="card-flat stack"><h4 class="li-title">Metode bayar · ' + h(finMonthLabel()) + '</h4>' + (keys.length ? keys.map(function (k) {
+        return '<div class="hbar"><span class="li-sub">' + h(k) + ' · ' + Math.round(by[k] / tot * 100) + '%</span><b class="num">' + h(finRp(by[k])) + '</b><div class="hbar-track"><div style="height:100%;width:' + Math.round(by[k] / tot * 100) + '%;background:var(--fg)"></div></div></div>';
+      }).join('') : '<p class="li-sub">Belum ada pembayaran bulan ini.</p>') + '</div>';
+      const day = function (s) { return new Date(String(s).slice(0, 10) + 'T00:00:00Z').getTime(); };
+      const paid = d.bills.filter(function (b) { return !b.archived && b.status === 'Lunas' && b.net > 0 && b.lastPaid && b.date; });
+      const days = paid.map(function (b) { return Math.max(0, Math.round((day(b.lastPaid) - day(b.date)) / 86400000)); });
+      const avg = days.length ? Math.round(days.reduce(function (s, x) { return s + x; }, 0) / days.length) : null;
+      const same = days.filter(function (x) { return x === 0; }).length;
+      html += '<div class="card-flat stack"><h4 class="li-title">Sampai lunas</h4>' + (avg === null ? '<p class="li-sub">Belum ada tagihan lunas dalam 12 bulan terakhir.</p>' :
+        '<div class="kv"><div><p class="k">Rata-rata</p><p class="v num">' + avg + ' hari</p></div><div><p class="k">Lunas di hari yang sama</p><p class="v num">' + same + ' dari ' + days.length + '</p></div></div>') + '</div>';
+    }
+    return html;
+  }
   function finReportHtml() {
     const o = fin.ov;
-    let html = '<div class="card-flat stack"><h4 class="li-title">Bagi hasil coach · ' + h(finMonthLabel()) + '</h4>';
+    // HP: grafik 6 bulan tinggal di sini (di ringkasan atas disembunyikan supaya daftar tagihan langsung terlihat).
+    const bars = document.querySelector('#fin-head .fin-fold .fold-body');
+    let html = (bars ? '<div class="card-flat stack fin-fold-rep"><h4 class="li-title">6 bulan terakhir</h4>' + bars.innerHTML.replace(/ id="fin-bars"/, '') + '</div>' : '') +
+      finInsightHtml() + '<div class="card-flat stack"><h4 class="li-title">Bagi hasil coach · ' + h(finMonthLabel()) + '</h4>';
     if (!o) html += '<div class="skeleton" style="height:40px"></div>';
     else if (!o.coachShare.length) html += '<p class="li-sub">Belum ada tagihan lunas atau sesi selesai bulan ini.</p>';
     else html += '<div class="kv">' + o.coachShare.map(function (c) {
@@ -11023,7 +11324,7 @@
       return '<div class="hbar"><span class="li-sub">' + h(k) + '</span><b class="num">' + h(finRp(cats[k])) + '</b><div class="hbar-track"><div style="height:100%;width:' + Math.round(cats[k] / total * 100) + '%;background:var(--fg)"></div></div></div>';
     }).join('') : '<p class="li-sub">Belum ada pengeluaran bulan ini.</p>') : '<div class="skeleton" style="height:40px"></div>') + '</div>';
     html += '<div class="card-flat stack"><h4 class="li-title">Daftar tunggakan</h4>' + (fin.arrears ? (fin.arrears.length ? '<div class="list">' + fin.arrears.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).map(function (b) {
-      return '<div class="list-item" role="button" tabindex="0" onclick="window.finOpenBill(\'' + h(b.id) + '\')"><div style="min-width:0"><p class="li-title truncate">' + h(b.name) + '</p><p class="li-sub">' + h(b.packageName) + ' · ' + b.ageDays + ' hari</p></div><span class="li-trail"><b class="num">' + h(finRp(b.remaining)) + '</b></span></div>';
+      return '<div class="list-item" role="button" tabindex="0" data-key="bill:' + h(b.id) + '" onclick="window.finOpenBill(\'' + h(b.id) + '\')"><div style="min-width:0"><p class="li-title truncate">' + h(b.name) + '</p><p class="li-sub">' + h(b.packageName) + ' · ' + b.ageDays + ' hari</p></div><span class="li-trail"><b class="num">' + h(finRp(b.remaining)) + '</b></span></div>';
     }).join('') + '</div>' : '<p class="li-sub">Semua tagihan lunas.</p>') : '<div class="skeleton" style="height:40px"></div>') + '</div>';
     const first = fin.year + '-' + ('0' + fin.month).slice(-2) + '-01', last = fin.year + '-' + ('0' + fin.month).slice(-2) + '-' + ('0' + new Date(fin.year, fin.month, 0).getDate()).slice(-2);
     html += '<div class="card-flat stack"><h4 class="li-title">Ekspor CSV</h4><div class="two"><input class="input" type="date" id="fin-exp-from" value="' + first + '" aria-label="Dari"><input class="input" type="date" id="fin-exp-to" value="' + last + '" aria-label="Sampai"></div>' +
@@ -11041,28 +11342,128 @@
       window.showToast(r.count + ' baris diekspor.');
     }).catch(function (err) { done(); finErr(err); });
   };
+  // Arsip / pulihkan: tanda di layar langsung berubah (tagihan & pengeluaran); angka ringkasan menyusul dari server.
+  function finFlag(kind, id, on) {
+    const d = fin.data;
+    if (!d) return null;
+    const list = kind === 'bill' ? d.bills : kind === 'expense' ? d.expenses : d.payments;
+    const row = list.filter(function (x) { return x.id === id; })[0];
+    if (!row) return null;
+    const was = row.archived;
+    const pays = kind === 'bill' ? d.payments.filter(function (p) { return p.billId === id; }).map(function (p) { return [p, p.archived]; }) : [];
+    row.archived = on;
+    pays.forEach(function (x) { x[0].archived = on; });
+    if (kind === 'payment' && row.billId) finRecalc(row.billId);
+    finPaint();
+    return function () { row.archived = was; pays.forEach(function (x) { x[0].archived = x[1]; }); if (kind === 'payment' && row.billId) finRecalc(row.billId); finPaint(); };
+  }
   window.finRestore = function (kind, id) {
-    optimistic({ q: { mode: 'admin', fn: 'restoreFinanceItem', args: [kind, id] }, ok: 'Dipulihkan.', label: 'Pulihkan', then: function () { finLoad(); } });
+    const undo = finFlag(kind, id, false);
+    optimistic({ q: { mode: 'admin', fn: 'restoreFinanceItem', args: [kind, id] }, ok: 'Dipulihkan.', label: 'Pulihkan', undo: undo, then: finReloadSoon });
   };
 
-  // Detail tagihan
+  // ── Hitungan tagihan di browser (rumus sama dengan _finBillTotals_ di Keuangan.gs) ─
+  function finTotals(b, payments) {
+    const net = Math.max(0, (Number(b.total) || 0) - (Number(b.discount) || 0));
+    let paid = 0, last = '';
+    payments.forEach(function (p) {
+      if (p.billId !== b.id || p.archived) return;
+      paid += Number(p.amount) || 0;
+      if (p.date > last) last = p.date;
+    });
+    return { net: net, paid: paid, remaining: Math.max(0, net - paid), status: paid >= net ? 'Lunas' : (paid > 0 ? 'DP' : 'Belum bayar'), lastPaid: last };
+  }
+  window.finTotals = finTotals;
+  function finBillById(id) { return fin.data ? fin.data.bills.filter(function (b) { return b.id === id; })[0] || null : null; }
+  function finPaysOf(id) { return fin.data.payments.filter(function (p) { return p.billId === id; }).sort(function (a, c) { return a.date < c.date ? -1 : 1; }); }
+  // Hitung ulang satu tagihan; selisih sisa ikut ke Tunggakan di setiap ringkasan bulan yang tersimpan.
+  function finRecalc(id) {
+    const b = finBillById(id);
+    if (!b) return;
+    const before = b.archived ? 0 : b.remaining, wasOpen = !b.archived && b.remaining > 0;
+    Object.assign(b, finTotals(b, fin.data.payments));
+    const after = b.archived ? 0 : b.remaining, isOpen = !b.archived && b.remaining > 0;
+    Object.keys(fin.ovs).forEach(function (k) {
+      const o = fin.ovs[k];
+      o.tunggakan = Math.max(0, (o.tunggakan || 0) + after - before);
+      o.openBills = Math.max(0, (o.openBills || 0) + (isOpen ? 1 : 0) - (wasOpen ? 1 : 0));
+    });
+  }
+  // Masuk / keluar satu tanggal ikut ke ringkasan bulan itu dan ke grafik 6 bulan di setiap ringkasan yang tersimpan.
+  function finOvAdd(field, date, amount) {
+    if (!date || !amount) return;
+    const mk = String(date).slice(0, 7);
+    Object.keys(fin.ovs).forEach(function (k) {
+      const o = fin.ovs[k];
+      if (k === mk) { o[field] = (o[field] || 0) + amount; o.laba = (o.masuk || 0) - (o.keluar || 0); }
+      (o.series || []).forEach(function (s) { if (finMk(s.year, s.month) === mk) s[field] = (s[field] || 0) + amount; });
+    });
+  }
+  // Pembayaran di layar sebelum server menjawab. Mengembalikan undo, atau null bila belum ada data halaman.
+  function finPayLocal(p, tmp) {
+    const d = fin.data;
+    if (!d) return null;
+    const snap = { payments: d.payments.slice(), bills: JSON.stringify(d.bills), ovs: JSON.stringify(fin.ovs) };
+    const old = p.id ? d.payments.filter(function (x) { return x.id === p.id; })[0] : null;
+    const view = { id: p.id || tmp, billId: p.billId || '', memberId: old ? old.memberId : '', date: p.date, amount: p.amount, method: p.method,
+      category: p.billId ? 'Paket' : p.category, note: p.note || '', hasProof: old ? old.hasProof : false, archived: false };
+    if (old) { finOvAdd('masuk', old.date, -old.amount); d.payments = d.payments.map(function (x) { return x === old ? view : x; }); }
+    else d.payments = d.payments.concat([view]);
+    finOvAdd('masuk', view.date, view.amount);
+    if (old && old.billId && old.billId !== view.billId) finRecalc(old.billId);
+    if (view.billId) finRecalc(view.billId);
+    fin.ver = '';
+    finCacheSave();
+    finPaint();
+    return function () {
+      d.payments = snap.payments; d.bills = JSON.parse(snap.bills); fin.ovs = JSON.parse(snap.ovs);
+      finCacheSave(); finPaint();
+    };
+  }
+  // Pengeluaran di layar sebelum server menjawab (angka Keluar dan grafik ikut).
+  function finExpLocal(x, tmp) {
+    const d = fin.data;
+    if (!d) return null;
+    const snap = { expenses: d.expenses.slice(), ovs: JSON.stringify(fin.ovs) };
+    const old = x.id ? d.expenses.filter(function (e) { return e.id === x.id; })[0] : null;
+    const view = { id: x.id || tmp, date: x.date, category: x.category, amount: x.amount, method: x.method, note: x.note || '', coachId: old ? old.coachId : '', hasProof: old ? old.hasProof : false, archived: false };
+    if (old) { finOvAdd('keluar', old.date, -old.amount); d.expenses = d.expenses.map(function (e) { return e === old ? view : e; }); }
+    else d.expenses = [view].concat(d.expenses);
+    finOvAdd('keluar', view.date, view.amount);
+    d.expenses.sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    fin.ver = '';
+    finCacheSave();
+    finPaint();
+    return function () { d.expenses = snap.expenses; fin.ovs = JSON.parse(snap.ovs); finCacheSave(); finPaint(); };
+  }
+  // Jawaban server: id asli untuk baris sementara, angka tagihan dari server (sumber kebenaran).
+  function finServerId(list, tmp, id) { (list || []).forEach(function (x) { if (x.id === tmp) x.id = id; }); }
+
+  // Detail tagihan: langsung dari data halaman (tagihan + pembayarannya), tombol langsung tampil. Server hanya ditanya bila
+  // tagihan itu tidak ada di data (mis. tagihan lunas lebih lama dari 12 bulan).
   window.finOpenBill = function (id) {
-    // Buka panel seketika dari data daftar, lalu isi pembayaran setelah server menjawab.
-    const row = (fin.bills || []).filter(function (x) { return x.id === id; })[0];
-    if (row) finBillPanel(id, row, null);
+    const b = finBillById(id);
+    if (b) {
+      fin.billId = id; fin.detail = { bill: b, payments: finPaysOf(id) };
+      finBillPanel(id, b, fin.detail.payments);
+      return;
+    }
     adminCall('getBillDetail', id).then(function (r) {
       fin.billId = id; fin.detail = r;
       finBillPanel(id, r.bill, r.payments);
     }).catch(finErr);
   };
+  // Panel tagihan yang sedang terbuka digambar ulang dari data terbaru (refreshDetail, setelah simpan / muat ulang).
+  window.finRefreshBill = function (id) { if (finBillById(id)) window.finOpenBill(id); };
   function finBillPanel(id, b, payments) {
     const money = function (v) { return v == null ? '…' : h(finRp(v)); };
     const pays = payments === null
       ? '<div class="skel-wrap" aria-hidden="true"><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:85%"></div></div>'
       : payments.map(function (p) {
+        const pending = window.isTmpId(p.id);
         return '<div class="card-flat fin-pay"><div class="fin-pay-top"><b class="num">' + h(finRp(p.amount)) + '</b><span class="li-sub">' + h(p.date) + '</span></div>' +
-          '<p class="li-sub">' + h(p.method) + (p.note ? ' · ' + h(p.note) : '') + (p.hasProof ? ' · 📎' : '') + (p.archived ? ' · diarsipkan' : '') + '</p>' +
-          '<div class="btn-row">' + (p.archived ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.finRestore(\'payment\',\'' + h(p.id) + '\')">Pulihkan</button>' : '<button type="button" class="btn btn-outline btn-sm" onclick="window.finOpenPayment(\'' + h(p.id) + '\')">Ubah</button>') + '</div></div>';
+          '<p class="li-sub">' + h(p.method) + (p.note ? ' · ' + h(p.note) : '') + (p.hasProof ? ' · 📎' : '') + (p.archived ? ' · diarsipkan' : '') + (pending ? ' · menyimpan…' : '') + '</p>' +
+          (pending ? '' : '<div class="btn-row">' + (p.archived ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.finRestore(\'payment\',\'' + h(p.id) + '\')">Pulihkan</button>' : '<button type="button" class="btn btn-outline btn-sm" onclick="window.finOpenPayment(\'' + h(p.id) + '\')">Ubah</button>') + '</div>') + '</div>';
       }).join('');
     const ready = payments !== null;
     const wa = ready && b.phone ? '<button type="button" class="btn btn-secondary" onclick="window.finBill_wa(\'' + h(id) + '\')">' + icon('message-circle') + 'WA tagih</button>' : '';
@@ -11074,10 +11475,33 @@
       '<div><p class="k">Dibayar</p><p class="v num">' + money(b.paid) + '</p></div><div><p class="k">Sisa</p><p class="v num">' + money(b.remaining) + pill + '</p></div></div>' +
       (b.note ? '<p class="li-sub">' + h(b.note) + '</p>' : '') +
       '<div class="group-label"><span>Pembayaran</span></div>' + (payments === null || pays ? '<div class="fin-pays">' + pays + '</div>' : '<p class="li-sub">Belum ada pembayaran.</p>') +
+      finHistoryHtml(b) +
       (ready ? '<div class="btn-row" style="position:sticky;bottom:0;background:var(--bg);padding:8px 0">' + wa +
-      (b.remaining ? '<button type="button" class="btn btn-outline" onclick="window.finOpenPayment(null,\'' + h(id) + '\',' + b.remaining + ')">Lunasi</button>' : '') +
+      (b.remaining && !b.archived ? '<button type="button" class="btn btn-outline fin-lunas-btn" onclick="window.finLunas(\'' + h(id) + '\')">' + icon('check') + 'Lunasi</button>' : '') +
       '<button type="button" class="btn btn-primary" onclick="window.finOpenPayment(null,\'' + h(id) + '\')">' + icon('plus') + 'Bayar</button></div>' : '') + '</div>');
   }
+  // Riwayat klien (2026-11): semua tagihan klien ini di data halaman (paket sebelumnya), total dibayar, dan jalan ke halaman klien.
+  function finHistoryHtml(b) {
+    if (!fin.data || !b.memberId) return '';
+    const mine = fin.data.bills.filter(function (x) { return x.memberId === b.memberId && !x.archived; });
+    const others = mine.filter(function (x) { return x.id !== b.id; });
+    const paid = mine.reduce(function (s, x) { return s + (x.paid || 0); }, 0), open = mine.reduce(function (s, x) { return s + (x.remaining || 0); }, 0);
+    const rows = others.map(function (x) {
+      return '<div class="list-item fin-hist" role="button" tabindex="0" onclick="window.finOpenBill(\'' + h(x.id) + '\')"><div style="min-width:0"><p class="li-title truncate">' + h(x.packageName || 'Paket') + '</p><p class="li-sub">' + h(x.date) + '</p></div>' +
+        '<span class="li-trail"><span class="' + FIN_STATUS_PILL[x.status] + '">' + h(x.status) + '</span>' + (x.remaining ? '<b class="num">' + h(finRp(x.remaining)) + '</b>' : '') + '</span></div>';
+    }).join('');
+    const go = window.members && window.members.some(function (m) { return String(m.id) === b.memberId; })
+      ? '<button type="button" class="btn btn-outline btn-sm" onclick="window.finGoClient(\'' + h(b.memberId) + '\')">' + icon('user') + 'Halaman klien</button>' : '';
+    return '<div class="group-label"><span>Riwayat klien</span></div>' +
+      '<div class="kv"><div><p class="k">Paket</p><p class="v num">' + mine.length + '</p></div><div><p class="k">Total dibayar</p><p class="v num">' + h(finRp(paid)) + '</p></div>' +
+      (open ? '<div><p class="k">Semua sisa</p><p class="v num">' + h(finRp(open)) + '</p></div>' : '') + '</div>' +
+      (rows ? '<div class="list">' + rows + '</div>' : '<p class="li-sub">Belum ada paket lain dalam 12 bulan terakhir.</p>') + go;
+  }
+  window.finGoClient = function (memberId) {
+    window.closeDetail();
+    window.navigate('clients');
+    setTimeout(function () { window.openProfile(memberId); }, 380);
+  };
   window.finBill_wa = function (id) {
     const b = fin.detail && fin.detail.bill;
     if (!b || !b.phone) return;
@@ -11099,14 +11523,27 @@
   window.finBillSave = function (e) {
     e.preventDefault();
     const b = fin.detail.bill;
-    // Antrean simpan: sisa & status tagihan dihitung server, dimuat ulang setelahnya. Ditolak = lencana (Ubah membuka lembar ini).
-    optimistic({ q: { mode: 'admin', fn: 'saveBillAdjust', args: [b.id, { diskon: finNum($('fin-bill-discount').value), total: finNum($('fin-bill-total').value), alasan: $('fin-bill-reason').value, catatan: $('fin-bill-note').value }] },
-      sheet: true, errEl: 'fin-bill-err', ok: 'Tagihan disimpan.', label: 'Tagihan', then: function () { window.finOpenBill(b.id); finLoad(); } });
+    const adj = { diskon: finNum($('fin-bill-discount').value), total: finNum($('fin-bill-total').value), alasan: $('fin-bill-reason').value, catatan: $('fin-bill-note').value };
+    // Total & diskon langsung di layar; jawaban server (getBillDetail) menggantinya. Ditolak = undo + lencana (Ubah membuka lembar ini).
+    const row = finBillById(b.id), was = row ? { total: row.total, discount: row.discount, note: row.note } : null;
+    let undo = null;
+    if (row) {
+      row.total = adj.total; row.discount = adj.diskon; row.note = adj.catatan;
+      finRecalc(row.id); finCacheSave(); finPaint();
+      undo = function () { Object.assign(row, was); finRecalc(row.id); finCacheSave(); finPaint(); };
+    }
+    optimistic({ q: { mode: 'admin', fn: 'saveBillAdjust', args: [b.id, adj] }, undo: undo,
+      sheet: true, errEl: 'fin-bill-err', ok: 'Tagihan disimpan.', label: 'Tagihan', then: function (r) {
+        const cur = r && r.bill && finBillById(r.bill.id);
+        if (cur) { Object.assign(cur, r.bill); finCacheSave(); finPaint(); }
+        finReloadSoon();
+      } });
   };
   window.finBillArchive = function () {
     const id = fin.detail.bill.id;
     window.closeModal(); window.closeDetail();
-    optimistic({ q: { mode: 'admin', fn: 'archiveFinanceItem', args: ['bill', id] }, ok: 'Diarsipkan. Pulihkan lewat filter Arsip.', label: 'Arsipkan tagihan', then: function () { finLoad(); } });
+    const undo = finFlag('bill', id, true);
+    optimistic({ q: { mode: 'admin', fn: 'archiveFinanceItem', args: ['bill', id] }, ok: 'Diarsipkan. Pulihkan lewat filter Arsip.', label: 'Arsipkan tagihan', undo: undo, then: finReloadSoon });
   };
 
   // Sheet pembayaran / pengeluaran
@@ -11122,6 +11559,7 @@
     return (fin.cats || []).filter(function (c) { return c.type === type && c.active; }).map(function (c) { return c.name; });
   }
   function finEnsureCats() {
+    finBoot();
     return fin.cats ? Promise.resolve(fin.cats) : adminCall('getFinanceCategories').then(function (c) { fin.cats = c; return c; });
   }
   function finShrink(file) {
@@ -11144,20 +11582,18 @@
     if (!f) { $(input.getAttribute('data-lbl')).textContent = 'Tambah foto bukti'; return; }
     finShrink(f).then(function (b64) { fin.proof = b64; $(input.getAttribute('data-lbl')).textContent = 'Foto siap diunggah'; }).catch(finErr);
   };
-  function finUploadProof(kind, id) {
-    if (!fin.proof) return Promise.resolve();
-    const b64 = fin.proof; fin.proof = null;
-    return adminCall('uploadFinanceProof', kind, id, b64, 'image/jpeg');
-  }
   window.finViewProof = function (kind, id, boxId) {
     adminCall('getFinanceProof', kind, id).then(function (r) { $(boxId).innerHTML = '<img src="' + r.dataUrl + '" alt="Bukti" style="max-width:100%;border-radius:12px">'; }).catch(finErr);
   };
 
+  // Lembar pembayaran terbuka seketika dari data halaman (kategori, metode, tagihan terbuka). Tanpa data halaman (dibuka dari
+  // Dashboard sebelum Keuangan pernah dimuat): ambil kategori + tagihan dulu seperti sebelumnya.
   window.finOpenPayment = function (payId, billId, remaining) {
-    Promise.all([finEnsureCats(), (!billId && !payId) ? adminCall('getBills', { status: 'open' }) : Promise.resolve([])]).then(function (res) {
+    finBoot();
+    const fill = function (list) {
       fin.payId = payId || null; fin.payPick = billId || '';
       const edit = payId && fin.detail ? fin.detail.payments.filter(function (p) { return p.id === payId; })[0] : null;
-      const bills = res[1].filter(function (b) { return !b.archived && b.remaining > 0; });
+      const bills = list.filter(function (b) { return !b.archived && b.remaining > 0; });
       const billSel = '<option value="">— Tanpa tagihan (pemasukan lain) —</option>' + bills.map(function (b) { return '<option value="' + h(b.id) + '">' + h(b.name + ' · ' + b.packageName + ' · sisa ' + finRp(b.remaining)) + '</option>'; }).join('') +
         (billId && !bills.some(function (b) { return b.id === billId; }) ? '<option value="' + h(billId) + '">Tagihan ini</option>' : '');
       $('fin-pay-title').textContent = edit ? 'Ubah pembayaran' : 'Pembayaran';
@@ -11179,34 +11615,110 @@
       const sel = $('fin-pay-bill');
       sel.onchange = function () { const b = bills.filter(function (x) { return x.id === sel.value; })[0]; $('fin-pay-cat-wrap').classList.toggle('hide', !!sel.value); if (b) { $('fin-pay-amount').value = String(b.remaining).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); } };
       openSheet('sheet-fin-payment');
-    }).catch(finErr);
+    };
+    if (fin.cats && (fin.data || billId || payId)) { fill(fin.data ? fin.data.bills : []); return; }
+    Promise.all([finEnsureCats(), (!billId && !payId) ? adminCall('getBills', { status: 'open' }) : Promise.resolve([])]).then(function (res) { fill(res[1]); }).catch(finErr);
   };
+  // Foto bukti yang sudah diperkecil, diambil dari lembar: unggah setelah baris tersimpan (id asli dari server).
+  function finTakeProof(kind) {
+    const b64 = fin.proof;
+    fin.proof = null;
+    if (!b64) return null;
+    return function (id) {
+      if (!id) return;
+      fin.uploads = (fin.uploads || 0) + 1;
+      adminCall('uploadFinanceProof', kind, id, b64, 'image/jpeg').then(function () {
+        window.showToast('Foto bukti terunggah.');
+        const list = fin.data && (kind === 'payment' ? fin.data.payments : fin.data.expenses);
+        (list || []).forEach(function (x) { if (x.id === id) x.hasProof = true; });
+        finCacheSave(); if (window.currentView === 'finance') finPaint();
+      }).catch(function (err) {
+        window.showToast('Foto bukti belum terunggah (' + waitErr(err) + '). Buka ' + (kind === 'payment' ? 'pembayaran' : 'pengeluaran') + ' itu, lalu unggah lagi.', 'cloud-alert');
+      }).then(function () { fin.uploads--; });
+    };
+  }
+  window.addEventListener('beforeunload', function (e) { if (fin.uploads > 0) { e.preventDefault(); e.returnValue = ''; } });
   window.finPaySave = function (e) {
     e.preventDefault();
     const billId = fin.payPick || $('fin-pay-bill').value;
     const p = { id: fin.payId || undefined, billId: billId || undefined, amount: finNum($('fin-pay-amount').value), date: $('fin-pay-date').value, method: finPicked('fin-pay-method'), note: $('fin-pay-note').value, category: finPicked('fin-pay-cat') };
-    // Tanpa foto bukti: antrean simpan (nomor pesanan mencegah pembayaran dobel). Dengan foto: menunggu id dari server untuk unggahan.
-    if (!fin.proof) {
-      const bill = fin.billId;
-      optimistic({ q: { mode: 'admin', fn: 'savePayment', args: [p] }, sheet: true, errEl: 'fin-pay-err', ok: 'Pembayaran tersimpan.', label: 'Pembayaran',
-        then: function () { finLoad(); if (bill && ui.detail === 'bill:' + bill) window.finOpenBill(bill); } });
-      return;
-    }
-    const btn = $('fin-pay-save'), done = busy(btn, 'Menyimpan…');
-    adminCall('savePayment', p).then(function (r) { return finUploadProof('payment', r.id); }).then(function () {
-      done(); window.closeModal(); window.showToast('Pembayaran tersimpan.'); finLoad(); if (fin.billId && ui.detail === 'bill:' + fin.billId) window.finOpenBill(fin.billId);
-    }).catch(function (err) { done(); $('fin-pay-err').textContent = waitErr(err); });
+    // Tanpa foto bukti: tagihan, ringkasan dan panel langsung berubah; antrean simpan mengirim (nomor pesanan mencegah
+    // pembayaran dobel). Pembayaran baru memakai id sementara, jadi "Ubah" sebelum server menjawab tetap ke baris yang benar.
+    if (!fin.proof) { finPaySend(p, 'fin-pay-err', 'Pembayaran tersimpan.'); return; }
+    // Dengan foto bukti (keputusan pemilik 2026-11-25): pembayaran tetap langsung di layar dan masuk antrean simpan; foto
+    // diunggah di belakang setelah server memberi id. Foto hanya di memori (terlalu besar untuk antrean di perangkat).
+    finPaySend(p, 'fin-pay-err', 'Pembayaran tersimpan. Foto bukti diunggah…', finTakeProof('payment'));
   };
-  window.finPayArchive = function () {
-    const bill = fin.billId;
+  function finPaySend(p, errEl, ok, upload) {
+    const tmp = p.id ? '' : window.tmpId();
+    const undo = finPayLocal(p, tmp);
+    optimistic({ q: { mode: 'admin', fn: 'savePayment', args: [p] }, tmp: tmp || undefined, sheet: true, errEl: errEl, ok: ok, label: 'Pembayaran', undo: undo,
+      then: function (r) {
+        if (fin.data && r) {
+          if (tmp && r.id) finServerId(fin.data.payments, tmp, r.id);
+          const b = r.bill && finBillById(r.bill.id);
+          if (b) Object.assign(b, { paid: r.bill.paid, remaining: r.bill.remaining, status: r.bill.status, lastPaid: r.bill.lastPaid });
+          finCacheSave(); finPaint();
+        }
+        if (upload) upload(r && r.id);
+        finReloadSoon();   // bagi hasil coach dan angka lain dari server, diam-diam
+      } });
+  }
+  // Lunasi sekali ketuk (keputusan pemilik 2026-11-25: selalu tanya metode, konfirmasi dulu). Lembar kecil: jumlah = sisa,
+  // tanggal hari ini, pilih metode, lalu "Ya, lunasi". "Ubah detail" membuka lembar pembayaran lengkap.
+  window.finLunas = function (id) {
+    const b = finBillById(id) || (fin.detail && fin.detail.bill && fin.detail.bill.id === id ? fin.detail.bill : null);
+    if (!b || !(b.remaining > 0)) return;
+    fin.lunasId = id;
+    $('fin-lunas-text').innerHTML = 'Lunasi <b class="num">' + h(finRp(b.remaining)) + '</b> untuk <b>' + h(b.name || 'klien ini') + '</b>?';
+    $('fin-lunas-sub').textContent = [b.packageName, b.status === 'DP' ? 'sudah dibayar ' + finRp(b.paid) : ''].filter(Boolean).join(' · ');
+    $('fin-lunas-method').innerHTML = fin.methods.map(function (v) { return '<button type="button" class="chip" data-v="' + h(v) + '" aria-pressed="false" onclick="window.finLunasPick(this)">' + h(v) + '</button>'; }).join('');
+    $('fin-lunas-date').value = finToday();
+    $('fin-lunas-err').textContent = '';
+    $('fin-lunas-go').disabled = true;
+    openSheet('sheet-fin-lunas');
+  };
+  window.finLunasPick = function (btn) {
+    $('fin-lunas-method').querySelectorAll('.chip').forEach(function (c) { const on = c === btn; c.classList.toggle('active', on); c.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    $('fin-lunas-go').disabled = false;
+  };
+  window.finLunasGo = function (e) {
+    if (e) e.preventDefault();
+    const b = finBillById(fin.lunasId) || (fin.detail && fin.detail.bill);
+    const method = finPicked('fin-lunas-method');
+    if (!b) return;
+    if (!method) { $('fin-lunas-err').textContent = 'Pilih metode pembayaran dulu.'; return; }
+    finPaySend({ billId: b.id, amount: b.remaining, date: $('fin-lunas-date').value || finToday(), method: method, note: '' }, 'fin-lunas-err', 'Lunas · ' + finRp(b.remaining) + '.');
+  };
+  window.finLunasMore = function () {
+    const b = finBillById(fin.lunasId) || (fin.detail && fin.detail.bill);
     window.closeModal();
-    optimistic({ q: { mode: 'admin', fn: 'archiveFinanceItem', args: ['payment', fin.payId] }, ok: 'Diarsipkan. Pulihkan lewat tagihannya.', label: 'Arsipkan pembayaran', then: function () { finLoad(); if (bill) window.finOpenBill(bill); } });
+    if (b) setTimeout(function () { window.finOpenPayment(null, b.id, b.remaining); }, 320);
+  };
+  // Desktop: ↑ / ↓ pindah ke tagihan sebelah saat panel tagihan terbuka (seperti daftar Klien).
+  document.addEventListener('keydown', function (e) {
+    if ((e.key !== 'ArrowDown' && e.key !== 'ArrowUp') || window.currentView !== 'finance' || !ui.detail || !/^bill:/.test(ui.detail) || ui.sheetOn) return;
+    const t = e.target, tag = t && t.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    const ids = Array.prototype.map.call(document.querySelectorAll('#fin-list .fin-bill'), function (n) { return n.getAttribute('data-key').slice(5); });
+    const i = ids.indexOf(ui.detail.slice(5)), j = i + (e.key === 'ArrowDown' ? 1 : -1);
+    if (i === -1 || j < 0 || j >= ids.length) return;
+    e.preventDefault();
+    window.finOpenBill(ids[j]);
+    const row = document.querySelector('#fin-list [data-key="bill:' + ids[j].replace(/["\\]/g, '') + '"]');
+    if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+  });
+  window.finPayArchive = function () {
+    const id = fin.payId;
+    window.closeModal();
+    const undo = finFlag('payment', id, true);
+    optimistic({ q: { mode: 'admin', fn: 'archiveFinanceItem', args: ['payment', id] }, ok: 'Diarsipkan. Pulihkan lewat tagihannya.', label: 'Arsipkan pembayaran', undo: undo, then: finReloadSoon });
   };
 
   window.finOpenExpense = function (id) {
-    finEnsureCats().then(function () {
+    const fill = function () {
       fin.expId = id || null;
-      const edit = id ? (fin.exps || []).filter(function (x) { return x.id === id; })[0] : null;
+      const edit = id ? ((fin.data && fin.data.expenses) || fin.exps || []).filter(function (x) { return x.id === id; })[0] : null;
       $('fin-exp-title').textContent = edit ? 'Ubah pengeluaran' : 'Pengeluaran';
       $('fin-exp-amount').value = edit ? String(edit.amount).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
       $('fin-exp-date').value = edit ? edit.date : finToday();
@@ -11220,23 +11732,31 @@
       $('fin-exp-archive').classList.toggle('hide', !edit);
       $('fin-exp-err').textContent = '';
       openSheet('sheet-fin-expense');
-    }).catch(finErr);
+    };
+    finBoot();
+    if (fin.cats) { fill(); return; }
+    finEnsureCats().then(fill).catch(finErr);
   };
   window.finExpSave = function (e) {
     e.preventDefault();
     const x = { id: fin.expId || undefined, amount: finNum($('fin-exp-amount').value), date: $('fin-exp-date').value, category: finPicked('fin-exp-cat'), method: finPicked('fin-exp-method'), note: $('fin-exp-note').value };
-    if (!fin.proof) {   // tanpa foto bukti: antrean simpan (nomor pesanan mencegah dobel)
-      optimistic({ q: { mode: 'admin', fn: 'saveExpense', args: [x] }, sheet: true, errEl: 'fin-exp-err', ok: 'Pengeluaran tersimpan.', label: 'Pengeluaran', then: function () { finLoad(); } });
-      return;
-    }
-    const btn = $('fin-exp-save'), done = busy(btn, 'Menyimpan…');
-    adminCall('saveExpense', x)
-      .then(function (r) { return finUploadProof('expense', r.id); }).then(function () { done(); window.closeModal(); window.showToast('Pengeluaran tersimpan.'); finLoad(); })
-      .catch(function (err) { done(); $('fin-exp-err').textContent = waitErr(err); });
+    // Langsung di layar, antrean simpan (nomor pesanan mencegah dobel); foto nota diunggah di belakang setelah ada id.
+    const upload = finTakeProof('expense');
+    const tmp = x.id ? '' : window.tmpId();
+    const undo = finExpLocal(x, tmp);
+    optimistic({ q: { mode: 'admin', fn: 'saveExpense', args: [x] }, tmp: tmp || undefined, sheet: true, errEl: 'fin-exp-err', ok: upload ? 'Pengeluaran tersimpan. Foto nota diunggah…' : 'Pengeluaran tersimpan.', label: 'Pengeluaran', undo: undo,
+      then: function (r) {
+        if (fin.data && tmp && r && r.id) { finServerId(fin.data.expenses, tmp, r.id); finCacheSave(); }
+        const id = r && r.id ? r.id : x.id;
+        if (upload) upload(id);
+        finReloadSoon();
+      } });
   };
   window.finExpArchive = function () {
+    const id = fin.expId;
     window.closeModal();
-    optimistic({ q: { mode: 'admin', fn: 'archiveFinanceItem', args: ['expense', fin.expId] }, ok: 'Diarsipkan. Pulihkan lewat filter Arsip.', label: 'Arsipkan pengeluaran', then: function () { finLoad(); } });
+    const undo = finFlag('expense', id, true);
+    optimistic({ q: { mode: 'admin', fn: 'archiveFinanceItem', args: ['expense', id] }, ok: 'Diarsipkan. Pulihkan lewat filter Arsip.', label: 'Arsipkan pengeluaran', undo: undo, then: finReloadSoon });
   };
   window.finQuick = function (kind) {
     window.closeModal();
