@@ -6,12 +6,12 @@
  * Penyimpanan cache itu satu per origin dan dipakai bersama service worker lain (app/sw.js: 'xnk-app-v…', pembungkus lama:
  * 'xnk-off-…', salinan lain berkas ini di cakupan lain), jadi tiap worker hanya menghapus awalannya sendiri.
  */
-var HASH = "4b73f0e3d6";
+var HASH = "a4baf77344";
 // Awalan cache mengikuti cakupan worker (akar dan /next/ menjalankan berkas ini bersamaan di origin yang sama dan tidak boleh
 // saling menghapus cache): 'xnk-page-root-…', 'xnk-page-next-…'.
 var PREFIX = 'xnk-page-' + (new URL(self.registration.scope).pathname.replace(/^\/|\/$/g, '').replace(/[^a-z0-9]+/gi, '-') || 'root') + '-';
 var CACHE = PREFIX + HASH;
-var ASSETS = ["app.49f33ce1d4.js","bagikan.4f4a79e645.js","config.js","host-local.1c9061bba4.js","offline.b44e4c2f5c.css","offline.e4a82eccac.js","scripts.893be8a4ca.js","theme.b99c2a86eb.css"];   // alamat relatif terhadap berkas ini
+var ASSETS = ["app.7914ae94c0.js","bagikan.4f4a79e645.js","config.js","host-local.1c9061bba4.js","offline.b44e4c2f5c.css","offline.e4a82eccac.js","scripts.893be8a4ca.js","theme.501b248408.css"];   // alamat relatif terhadap berkas ini
 var LIBS = ['https://xnk.my.id/exercises/exercises.min.json', 'https://xnk.my.id/foods/foods.min.json',
   'https://xnk.my.id/figure/figure.min.json', 'https://xnk.my.id/figure/rig.min.json'];
 var GIF_BASE = 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/', GIF_CACHE = 'xnk-gif-v1', GIF_MAX = 150;
