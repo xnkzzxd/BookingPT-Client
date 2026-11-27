@@ -1209,6 +1209,9 @@
   });
 
   // ── Chrome: sidebar, topbar, bar bawah ─────────────────────────────────────
+  // Fase AE: siapa yang login di panel ({role:'owner'} atau {role:'coach', coachId, name}); disalin ke xnk_admin_me.
+  window.adminMe = (function () { try { return JSON.parse(localStorage.getItem('xnk_admin_me') || 'null'); } catch (e) { return null; } })();
+  window.isCoachRole = function () { return !!(window.adminMe && window.adminMe.role === 'coach'); };
   const NAV = {
     admin: [
       ['dashboard', 'layout-dashboard', 'Dashboard'],
@@ -1267,7 +1270,8 @@
     ui.chromeGuest = isGuest();
     ui.chromeNut = nutTabOn();
     const items = ui.chromeGuest ? GUEST_NAV : (ui.mode === 'public' && !ui.chromeNut ? NAV.public.filter(n => n[0] !== 'public-food') : NAV[ui.mode]);
-    const sideItems = items.concat(ui.mode === 'admin' ? [['content', 'megaphone', 'Konten']] : []).concat(ui.mode === 'admin' && finOn() ? [['finance', 'wallet', 'Keuangan']] : []);
+    const coachRole = ui.mode === 'admin' && window.isCoachRole();   // Fase AE: login coach, tanpa halaman khusus pemilik
+    const sideItems = items.concat(ui.mode === 'admin' && !coachRole ? [['content', 'megaphone', 'Konten']] : []).concat(ui.mode === 'admin' && finOn() ? [['finance', 'wallet', 'Keuangan']] : []);
     const navBtn = function (n) {
       return '<button type="button" class="nav-item" data-view="' + n[0] + '" title="' + n[2] + '" onclick="window.navigate(\'' + n[0] + '\')">' +
         icon(n[1]) + '<span class="nav-label">' + n[2] + '</span>' +
@@ -1283,6 +1287,9 @@
       ? '<button type="button" class="side-me" id="side-me" onclick="window.navigate(\'public-more\')" title="Saya">' + avatar(window.publicLoggedMember.photo, window.publicLoggedMember.name, 'sm') +
         '<span class="side-me-text"><b>' + h(String(window.publicLoggedMember.name || '').split(' ')[0]) + '</b><span id="side-me-lv"></span></span></button>' +
         '<button type="button" class="nav-item hide" id="side-auth-btn" onclick="window.logoutCurrent()">' + icon('log-out') + '<span class="nav-label">Keluar</span></button>'
+      : ui.mode === 'admin' && window.isCoachRole()
+      ? '<button type="button" class="nav-item" onclick="window.openSettings()">' + icon('sun-moon') + '<span class="nav-label">Tampilan</span></button>' +
+        '<button type="button" class="nav-item" onclick="window.logoutCurrent()">' + icon('log-out') + '<span class="nav-label">Keluar</span></button>'
       : ui.mode === 'admin'
       ? '<button type="button" class="nav-item" data-view="settings" onclick="window.navigate(\'settings\')">' + icon('settings') + '<span class="nav-label">Pengaturan</span></button>'
       : '<button type="button" class="nav-item" onclick="window.openSettings()">' + icon('sun-moon') + '<span class="nav-label">Tampilan</span></button>' +
@@ -1313,7 +1320,9 @@
     let html = '';
     if (ui.mode === 'admin') {
       html += '<button type="button" class="icon-btn" id="notification-btn" onclick="window.openNotificationModal()" aria-label="Booking baru">' + icon('bell') + '<span class="badge-dot hide" id="unread-badge"></span></button>';
-      html += '<button type="button" class="icon-btn only-mobile" onclick="window.openSettings()" aria-label="Pengaturan">' + icon('settings') + '</button>';
+      html += window.isCoachRole()
+        ? '<button type="button" class="icon-btn only-mobile" onclick="window.logoutCurrent()" aria-label="Keluar">' + icon('log-out') + '</button>'
+        : '<button type="button" class="icon-btn only-mobile" onclick="window.openSettings()" aria-label="Pengaturan">' + icon('settings') + '</button>';
     } else {
       if (!window.publicLoggedMember) {
         html += '<button type="button" class="icon-btn only-mobile" onclick="window.openSettings()" aria-label="Tampilan">' + icon('sun-moon') + '</button>';
@@ -1464,7 +1473,7 @@
     keuangan: function () { return finSettingsHtml(); },
     latihan: function () { return exAliasHtml(); },
     akun: function () {
-      return (window.unduhCardHtml ? window.unduhCardHtml() : '') + '<div class="card-flat stack"><p class="li-sub">Keluar dari panel di perangkat ini.</p>' +
+      return (window.pasangCardHtml ? window.pasangCardHtml() : '') + (window.unduhCardHtml ? window.unduhCardHtml() : '') + '<div class="card-flat stack"><p class="li-sub">Keluar dari panel di perangkat ini.</p>' +
         '<button type="button" class="btn btn-danger btn-block" onclick="window.logoutCurrent()">' + icon('log-out') + ' Keluar</button></div>';
     },
     paket: function () { return '<div class="stack" id="pkg-root">' + pkgHtml() + '</div>'; },
@@ -1889,7 +1898,7 @@
     setState.pre = p;
     return p;
   }
-  window.settingsPrefetch = function () { if (!setState.built && !setState.pre) settingsPrefetch(); };
+  window.settingsPrefetch = function () { if (window.isCoachRole()) return; if (!setState.built && !setState.pre) settingsPrefetch(); };
   function applyRmdStatus(s) {
     setState.status = s;
     const el = $('rmd-status'); if (el) el.innerHTML = rmdStatusHtml();
@@ -2555,6 +2564,7 @@
       .then(function (res) {
         // Tombol tetap "Memeriksa…" sampai data siap: satu loading saja.
         _lsSet(ADMIN_TOKEN_KEY, res.token);
+        window.setAdminMe(res.me || { role: 'owner' });   // Fase AE
         window.loadAllData().then(function () {
           done();
           $('admin-pin').value = '';
@@ -2631,7 +2641,7 @@
       return true;
     } catch (e) { return false; }
   }
-  function clearAdminCache() { window.offlineClear(); window.aqForget(); window.clientInsight = {}; _lsSet(ADMIN_CACHE_KEY, null); _lsSet('xnk_settings_cache', null); if (window.clearClientCache) window.clearClientCache(); if (window.clearFinCache) window.clearFinCache(); if (window.clearCareCache) window.clearCareCache(); if (window.clearNutCache) window.clearNutCache(); if (window.wlForget) window.wlForget('admin'); if (window.obForget) window.obForget('admin'); }
+  function clearAdminCache() { _lsSet('xnk_admin_me', null); window.adminMe = null; window.offlineClear(); window.aqForget(); window.clientInsight = {}; _lsSet(ADMIN_CACHE_KEY, null); _lsSet('xnk_settings_cache', null); if (window.clearClientCache) window.clearClientCache(); if (window.clearFinCache) window.clearFinCache(); if (window.clearCareCache) window.clearCareCache(); if (window.clearNutCache) window.clearNutCache(); if (window.wlForget) window.wlForget('admin'); if (window.obForget) window.obForget('admin'); }
 
   // Bagian utama dimuat dulu; riwayat transaksi, PR, perpanjangan, pengaturan
   // dan omzet menyusul setelah layar tampil.
@@ -2708,6 +2718,7 @@
       if (r[3]) window.priceListData = r[3];
       if (r[4]) Object.assign(DAY_HOURS, r[4]);
       if (b) window.setReadonly(b.readonly, 'admin');   // T-2251
+      if (b && b.me) window.setAdminMe(b.me);           // Fase AE
       if (b && Array.isArray(b.holds) && !window.wqStale(snap)) window.holds = b.holds;   // Fase AD1
       ui.dataReady = true;
       window.hideGlobalLoader();
@@ -3226,6 +3237,9 @@
   function renderRevenueKpi() {
     const el = $('kpi-revenue-tile');
     if (!el) return;
+    // Fase AE: coach melihat keuangannya sendiri hanya bila Keuangan menyala; omzet gabungan milik pemilik.
+    if (window.isCoachRole() && !(ui.revenue && ui.revenue.fin)) { el.classList.add('hide'); return; }
+    el.classList.remove('hide');
     const month = MONTHS[new Date().getMonth()];
     const r = ui.revenue;
     let body;
@@ -4577,11 +4591,14 @@
   }
   window.setClientSort = function (v) { ui.clientSort = v; _lsSet('xnk_client_sort', v); renderClientList(); };
   window.setClientView = function (v) { ui.clientView = v; _lsSet('xnk_client_view', v); document.querySelectorAll('#client-view-seg button').forEach(b => { const on = b.getAttribute('data-v') === v; b.classList.toggle('active', on); b.setAttribute('aria-pressed', on); }); renderClientList(); };
-  const CL_FILTERS = [['all', 'Semua'], ['perhatian', 'Perlu perhatian'], ['low', 'Hampir habis'], ['empty', 'Habis'], ['active', 'Aktif'], ['held', 'Ditahan'], ['archive', 'Riwayat paket']];   // Fase AD1: Ditahan
+  const CL_FILTERS_ALL = [['all', 'Semua'], ['perhatian', 'Perlu perhatian'], ['low', 'Hampir habis'], ['empty', 'Habis'], ['active', 'Aktif'], ['held', 'Ditahan'], ['nocoach', 'Tanpa coach'], ['archive', 'Riwayat paket']];   // Fase AD1: Ditahan; Fase AE: Tanpa coach
+  // "Tanpa coach" hanya untuk pemilik, dan hanya saat ada 2+ coach aktif atau memang ada klien tanpa coach.
+  const clNoCoachOn = () => !window.isCoachRole() && (window.coaches || []).length > 1;
+  let CL_FILTERS = CL_FILTERS_ALL;
   const CL_SORTS = [['terbaru', 'Terbaru'], ['perhatian', 'Perlu perhatian'], ['nama', 'Nama'], ['sisa', 'Sisa sesi'], ['lama', 'Lama tidak latihan']];
   function clientCounts() {
-    const counts = { all: window.members.length, active: 0, low: 0, empty: 0, held: 0, perhatian: 0, archive: (window.memberArchive || []).length };
-    window.members.forEach(m => { counts[clientState(m)]++; if (flagsOf(m).length) counts.perhatian++; });
+    const counts = { all: window.members.length, active: 0, low: 0, empty: 0, held: 0, perhatian: 0, nocoach: 0, archive: (window.memberArchive || []).length };
+    window.members.forEach(m => { counts[clientState(m)]++; if (flagsOf(m).length) counts.perhatian++; if (!m.preferredCoachId) counts.nocoach++; });
     return counts;
   }
   // Ringkasan di band: satu kalimat di HP, dua angka kecil di PC (dulu kartu hitam tersendiri).
@@ -4601,6 +4618,8 @@
     const fKey = focusedRowKey();
     loadClientPrefs();
     const counts = clientCounts();
+    CL_FILTERS = clNoCoachOn() || counts.nocoach && !window.isCoachRole() && (window.coaches || []).length ? CL_FILTERS_ALL : CL_FILTERS_ALL.filter(c => c[0] !== 'nocoach');
+    if (ui.clientFilter === 'nocoach' && CL_FILTERS !== CL_FILTERS_ALL) ui.clientFilter = 'all';
     const opt = (o, cur, n) => '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + (n != null ? ' (' + n + ')' : '') + '</option>';
     const html = '<div class="page-head cl-head"><div class="cl-head-t"><h2 class="page-title">Klien</h2><p class="page-sub" id="cl-sub">' + h(clientHeadSub(counts)) + '</p></div>' + clientHeadStats() +
       '<button type="button" class="btn btn-primary cl-new" onclick="window.openAddMemberModal()" aria-label="Klien baru">' + icon('user-plus') + '<span class="cl-new-t">Klien baru</span></button></div>' +
@@ -4638,7 +4657,7 @@
     const match = x => !q || String(x.name || '').toLowerCase().indexOf(q) !== -1 || String(x.phone || '').indexOf(q.replace(/\D/g, '') || '\u0000') !== -1;
     let entries = [];
     if (ui.clientFilter !== 'archive') {
-      window.members.filter(match).filter(m => ui.clientFilter === 'all' || (ui.clientFilter === 'perhatian' ? flagsOf(m).length > 0 : clientState(m) === ui.clientFilter))
+      window.members.filter(match).filter(m => ui.clientFilter === 'all' || (ui.clientFilter === 'perhatian' ? flagsOf(m).length > 0 : ui.clientFilter === 'nocoach' ? !m.preferredCoachId : clientState(m) === ui.clientFilter))
         .forEach(m => entries.push({ type: 'live', data: m, date: window.parseFlexibleDate(m.lastActivityDate || m.joinDate) }));
     }
     if (ui.clientFilter === 'archive' || (ui.clientFilter === 'all' && q)) {
@@ -4680,6 +4699,11 @@
     };
     const labels = q ? [] : entries.map(groupOf), many = labels.some(l => l !== labels[0]);
     let html = '', group = '';
+    // Fase AE: semua klien tanpa coach sekaligus diberi coach (pemilik).
+    if (ui.clientFilter === 'nocoach' && !window.isCoachRole()) {
+      html += '<div class="card-flat row-between" style="gap:12px;margin-bottom:12px"><p class="li-sub" style="margin:0">' + entries.length + ' klien belum punya coach. Coach hanya melihat klien miliknya.</p>' +
+        '<button type="button" class="btn btn-primary btn-sm" onclick="window.mcoachOpen(null)">' + icon('user-check') + 'Tetapkan coach</button></div>';
+    }
     entries.forEach(function (e, i) {
       const g = labels[i];
       if (many && g !== group) { html += '<div class="group-label month-divider"><span>' + h(g) + '</span></div>'; group = g; }
@@ -8381,12 +8405,13 @@
       ((c.achievements && c.achievements.length) ? '<div class="card-flat"><p class="eyebrow">Prestasi</p><p style="margin-top:6px">' + c.achievements.map(h).join(' · ') + '</p></div>' : '') +
       ((c.location || c.instagram) ? '<div class="card-flat"><p class="eyebrow">Lokasi & sosial</p><p style="margin-top:6px">' + h(c.location || '') + (c.location && c.instagram ? ' · ' : '') + (c.instagram ? '@' + h(c.instagram) : '') + '</p></div>' : '') +
       '<div class="btn-row"><button type="button" class="btn btn-primary" data-wa="' + h(c.phone) + '" onclick="window.sendToParentWA(this.getAttribute(\'data-wa\'),\'\')">' + icon('message-circle') + 'Chat WA</button>' +
-      '<button type="button" class="btn btn-outline" onclick="window.openEditCoachModal(\'' + h(c.id) + '\')">' + icon('pencil') + 'Ubah</button></div>' +
-      (c.id === window.coachSelfId ? '<button type="button" class="btn btn-secondary btn-block" onclick="window.openCoachPreview()">' + icon('eye') + 'Lihat seperti klien</button>' : '') +
+      (window.isCoachRole() ? '' : '<button type="button" class="btn btn-outline" onclick="window.openEditCoachModal(\'' + h(c.id) + '\')">' + icon('pencil') + 'Ubah</button>') + '</div>' +
+      (window.isCoachRole() ? '' : '<button type="button" class="btn btn-outline btn-block" onclick="window.coachPinOpen(\'' + h(c.id) + '\')">' + icon('key-round') + (c.hasPin ? 'Ganti PIN login coach' : 'Buat PIN login coach') + '</button>') +
+      (window.isCoachRole() ? '</div>' : (c.id === window.coachSelfId ? '<button type="button" class="btn btn-secondary btn-block" onclick="window.openCoachPreview()">' + icon('eye') + 'Lihat seperti klien</button>' : '') +
       (c.aktif !== false && c.id !== window.coachSelfId ? '<button type="button" class="btn btn-outline btn-block" onclick="window.setSelfCoachUI(\'' + h(c.id) + '\')">' + icon('user-check') + 'Jadikan "Ini saya"</button>' : '') +
       '<button type="button" class="btn btn-outline btn-block" onclick="window.setCoachActiveUI(\'' + h(c.id) + '\',' + (c.aktif === false ? 'true' : 'false') + ')">' + icon('power') + (c.aktif === false ? 'Aktifkan coach' : 'Nonaktifkan coach') + '</button>' +
-      '<button type="button" class="btn btn-ghost btn-block" onclick="window.deleteCoachConfirm(\'' + h(c.id) + '\')">' + icon('trash-2') + 'Hapus coach</button></div>';
-    openDetail('coach:' + c.id, 'Profil coach', '<button type="button" class="icon-btn plain" onclick="window.openEditCoachModal(\'' + h(c.id) + '\')" aria-label="Ubah coach">' + icon('pencil') + '</button>', body);
+      '<button type="button" class="btn btn-ghost btn-block" onclick="window.deleteCoachConfirm(\'' + h(c.id) + '\')">' + icon('trash-2') + 'Hapus coach</button></div>');
+    openDetail('coach:' + c.id, 'Profil coach', window.isCoachRole() ? '' : '<button type="button" class="icon-btn plain" onclick="window.openEditCoachModal(\'' + h(c.id) + '\')" aria-label="Ubah coach">' + icon('pencil') + '</button>', body);
   };
 
   window.deleteCoachConfirm = function (id) {
@@ -12911,6 +12936,19 @@
   const bkMulti = () => !window.isSoloCoach() && window.coaches.length > 1;
   function bkMap() { return (bkMulti() ? window.openSlotsByCoachMap[bkx.coach] : window.openSlotsByDate) || {}; }
   // Fase AD1: hari di dalam cuti sendiri (atau akun nonaktif) tampil penuh; server tetap menolak dengan kalimat yang jelas.
+  // Fase AE: ringkasan jam kosong seorang coach untuk 7 hari ke depan (dari openSlotsByCoachMap; tanpa panggilan server).
+  function bkCoachWeek(id) {
+    const m = (window.openSlotsByCoachMap || {})[String(id)] || {};
+    let hours = 0, first = '';
+    for (let d = 0; d < 7; d++) {
+      const k = wibParts(new Date(Date.now() + d * 86400000)).date, f = m[k] || {};
+      if (window.myHoldBlocks && window.myHoldBlocks(k)) continue;
+      const hs = Object.keys(f).map(Number).filter(hh => f[hh] > 0).sort((a, b) => a - b);
+      hours += hs.length;
+      if (!first && hs.length) first = (d === 0 ? 'hari ini' : d === 1 ? 'besok' : bkDayLabel(k)) + ' ' + pad(hs[0]) + ':00';
+    }
+    return { hours: hours, first: first };
+  }
   function bkFreeHours(date) { if (window.myHoldBlocks && window.myHoldBlocks(date)) return []; const f = bkMap()[date] || {}; return Object.keys(f).map(Number).filter(hh => f[hh] > 0).sort((a, b) => a - b); }
   const bkDayLabel = date => { const p = date.split('-').map(Number); return fmtDate(new Date(p[0], p[1] - 1, p[2])); };
   window.bkOpen = function (opts) {
@@ -12929,7 +12967,7 @@
     Object.assign(bkx, { steps: (multi && !old ? ['coach'] : []).concat(['hari', 'jam', 'cek']), i: 0, repeat: false, resched: old ? String(old.id) : '',
       coach: multi ? String((old && old.coachId) || ui.bookCoach || '') : '', date: opts.date || '', time: opts.time || '' });
     if (bkx.date && bkx.time) bkx.i = bkx.steps.indexOf('cek');
-    else if (bkx.coach && bkx.steps[0] === 'coach') bkx.i = 1;
+    // Fase AE: langkah coach selalu tampil dulu (coach klien sudah terpilih), supaya jadwal semua coach terlihat.
     bkx.month = (bkx.date || wibParts(new Date()).date).slice(0, 7);
     ui.bkOn = true;
     const el = $('bk-screen');
@@ -13040,7 +13078,9 @@
     if (st === 'coach') {
       body = '<h3 class="bk-q">Pilih coach</h3><div class="px-stack" style="gap:10px">' + window.coaches.map(function (c) {
         const on = String(c.id) === bkx.coach;
-        return '<button type="button" class="bk-opt' + (on ? ' on' : '') + '" aria-pressed="' + on + '" data-id="' + h(String(c.id)) + '" onclick="window.bkPick(\'coach\',this.dataset.id)">' + avatar(c.photo, c.name, 'sm') + '<b class="grow">' + h(c.name) + '</b></button>';
+        const wk = bkCoachWeek(c.id);   // Fase AE: jam kosong tiap coach, 7 hari ke depan, sebelum memilih
+        return '<button type="button" class="bk-opt' + (on ? ' on' : '') + '" aria-pressed="' + on + '" data-id="' + h(String(c.id)) + '" onclick="window.bkPick(\'coach\',this.dataset.id)">' + avatar(c.photo, c.name, 'sm') +
+          '<span class="grow"><b>' + h(c.name) + '</b><span class="li-sub" style="display:block">' + h(c.specialty || '') + (c.specialty ? ' · ' : '') + (wk.hours ? wk.hours + ' jam kosong dalam 7 hari' + (wk.first ? ', paling cepat ' + h(wk.first) : '') : 'Belum ada jam kosong 7 hari ini') + '</span></span></button>';
       }).join('') + '</div>';
     } else if (st === 'hari') {
       const free = bkx.date ? bkFreeHours(bkx.date).length : 0;
@@ -13558,6 +13598,35 @@
       if (!unduh.run) paintIcons();
     }
   }
+  // ── Pasang aplikasi panel (Pengaturan → Akun): APK / MSI / DMG dari GitHub Release "app-latest" (workflow apps.yml),
+  // jadi tidak perlu Chrome. Hanya di xnk.my.id, bukan di hub atau di dalam aplikasi itu sendiri.
+  var APP_DL = 'https://github.com/xnkzzxd/' + ['X', 'NK'].join('') + '/releases/download/app-latest/' + ['X', 'NK'].join('') + '-Panel-';
+  var pwaPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); pwaPrompt = e; });
+  window.pasangPwa = function () {
+    if (!pwaPrompt) return;
+    pwaPrompt.prompt();
+    pwaPrompt = null;
+  };
+  window.pasangCardHtml = function () {
+    var host = String(location.hostname || '');
+    if (!/(^|\.)xnk\.my\.id$/.test(host)) return '';
+    var ua = navigator.userAgent || '';
+    if (/XNKAndroid|XNKiOS|Pake|Tauri/i.test(ua)) return '';
+    var os = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? 'ios' : /Windows/i.test(ua) ? 'win' : /Mac/i.test(ua) ? 'mac' : '';
+    var btn = function (file, label, main) {
+      return '<a class="btn ' + (main ? 'btn-primary' : 'btn-outline') + ' btn-block" href="' + APP_DL + file + '" rel="noopener">' + icon('download') + ' ' + h(label) + '</a>';
+    };
+    var list = [['android', 'Android.apk', 'Android (.apk)'], ['win', 'Windows.msi', 'Windows (.msi)'], ['mac', 'macOS.dmg', 'Mac (.dmg)']];
+    list.sort(function (a, b) { return (b[0] === os) - (a[0] === os); });
+    var body = list.map(function (x) { return btn(x[1], x[2], x[0] === os); }).join('');
+    var ios = os === 'ios' ? '<p class="li-sub">iPhone/iPad: buka ' + h(host) + ' di Safari → Bagikan → <b>Tambah ke Layar Utama</b>.</p>' : '';
+    var pwa = pwaPrompt ? '<button type="button" class="btn btn-outline btn-block" onclick="window.pasangPwa()">' + icon('smartphone') + ' Pasang dari browser ini</button>' : '';
+    return '<div class="card-flat stack"><div><p class="li-title">Pasang aplikasi</p>' +
+      '<p class="li-sub">Panel ini sebagai aplikasi sendiri, tanpa Chrome. Android: izinkan "pasang dari sumber ini" bila ditanya.</p></div>' +
+      ios + body + pwa + '</div>';
+  };
+
   window.unduhCardHtml = function () {
     return '<div class="card-flat stack"><div><p class="li-title">Unduh data saya</p>' +
       '<p class="li-sub">Semua data (klien, jadwal, latihan, gizi, keuangan, …) dalam satu berkas Excel. Foto progres, kunci perangkat, dan pengaturan rahasia tidak ikut.</p></div>' +
@@ -13796,7 +13865,10 @@
           : '<p class="cp-left-t"><b>Tanpa batas sesi</b><span class="cp-left-n"> · ' + done + ' selesai</span><span class="hide" id="profile-remaining">' + rem + '</span><span class="hide" id="profile-total">0</span></p>') + '</div>' +
         '<button type="button" class="btn btn-sm cp-renew ' + (total && rem === 0 ? 'btn-inverse' : 'btn-ghost-ink') + '" id="profile-renew" onclick="window.openRenewMember(\'' + id + '\')">' + icon('repeat') + 'Perpanjang</button></div>' +
         '<div class="meter cp-meter' + (st === 'empty' ? ' m-empty' : '') + '" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
-        (nx ? '<p class="cp-left-next">Berikutnya ' + h(fmtShort(new Date(nx.start))) + ' · ' + fmtTime(new Date(nx.start)) + '</p>' : '') + '</div>' +
+        (nx ? '<p class="cp-left-next">Berikutnya ' + h(fmtShort(new Date(nx.start))) + ' · ' + fmtTime(new Date(nx.start)) + '</p>' : '') +
+        // Fase AE: coach klien + Pindah (pemilik saja, saat ada 2+ coach atau klien belum punya coach)
+        (!window.isCoachRole() && (window.coaches || []).length > 1 ? '<p class="cp-left-next cp-coach-row">' + icon('dumbbell') + '<span>' + (m.preferredCoachName ? h(window.coachLabel(m.preferredCoachName)) : 'Belum punya coach') + '</span> · ' +
+          '<button type="button" class="cp-link-ink" id="profile-coach-move" onclick="window.mcoachOpen(\'' + id + '\')">' + (m.preferredCoachId ? 'Pindah' : 'Pilih coach') + '</button></p>' : '') + '</div>' +
       '<div class="client-hero-actions cp-acts">' +
         act('', 'message-circle', 'Chat WA', "window.sendToParentWA(this.getAttribute('data-wa'),'')", ' data-wa="' + h(m.phone) + '"') +
         act('', 'calendar-plus', 'Booking', "window.openBookingSheet({memberId:'" + id + "'})") +
@@ -14805,7 +14877,7 @@
     optimistic({ q: { mode: 'admin', fn: 'logClientFood', args: [memberId, entry] }, sheet: true, label: 'Catat makanan', ok: 'Tercatat untuk klien.',
       then: function (r) { cfApply(memberId, r); } });
   };
-  // ═══ Fase AD4 (T-2441…T-2443): laporan PDF, dibuat hanya saat tombol ditekan ═══
+  // ═══ Fase AD4 (T-2441…T-2443) + AD5 (T-2451): laporan PDF, dibuat hanya saat tombol ditekan ═══
   // Server (Laporan.gs: getMyReport / getMemberReport) mengirim angka + kalimat; di sini halaman A4 digambar di kanvas
   // (150 dpi, 1240 × 1754), tiap halaman jadi JPEG, lalu disusun jadi PDF dengan penulis kecil sendiri (tanpa pustaka).
   // Tidak ada yang disimpan di server atau diunggah. Pilihan bagian disimpan di perangkat (xnk_report_prefs); pesan coach
@@ -14903,19 +14975,107 @@
     let a = ''; try { a = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(); } catch (e) {}
     return a && !/transparent/.test(a) ? a : '#111111';
   }
-  function rpFontsReady() { try { return document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]) : Promise.resolve(); } catch (e) { return Promise.resolve(); } }
-  const RPF = (w, px, fam) => w + ' ' + px + 'px ' + (fam === 'big' ? '"Anton", "Inter", sans-serif' : '"Inter", system-ui, sans-serif');
+  function rpAccentOnInk() {   // --accent-on-ink: aksen yang terbaca di atas hitam (Fase X)
+    let a = ''; try { a = getComputedStyle(document.documentElement).getPropertyValue('--accent-on-ink').trim(); } catch (e) {}
+    return a && !/transparent/.test(a) ? a : '#ffffff';
+  }
+  // ── AD5 (T-2452): gambar untuk PDF (ikon Lucide, logo, figur tubuh) dimuat dulu, lalu digambar di kanvas
+  function rpImg(src) { return new Promise(function (res) { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; setTimeout(() => res(null), 4000); }); }
+  const rpSvgUrl = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  function rpIconSvg(name, color) {   // node Lucide → SVG utuh (warna tetap; kanvas tidak membaca CSS)
+    try {
+      const L = window.lucide, key = String(name).replace(/(^|-)([a-z0-9])/g, (m, a, b) => b.toUpperCase()), node = L && L.icons && (L.icons[key] || L.icons[name]);
+      if (!node) return null;
+      const kids = typeof node[0] === 'string' ? node[2] || [] : node;
+      const attr = o => Object.keys(o || {}).map(k => k + '="' + String(o[k]).replace(/"/g, '&quot;') + '"').join(' ');
+      return '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        kids.map(c => '<' + c[0] + ' ' + attr(c[1]) + '/>').join('') + '</svg>';
+    } catch (e) { return null; }
+  }
+  function rpFigSvg(levels, sex, A) {
+    if (!window.mmFigSvg) return null;
+    let svg = window.mmFigSvg(levels, 'Otot dilatih', sex, 'rp');
+    if (!svg) return null;
+    svg = svg.replace('<svg class="rp mm-fig"', '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800"')
+      .replace(/class="mmf-body"/g, 'fill="#efeeec" stroke="#cfcfcb" stroke-width="3"').replace(/class="mmf-base"/g, 'fill="#e4e3e0"')
+      .replace(/class="mmf on"/g, 'fill="' + A + '"').replace(/class="mmf half"/g, 'fill="' + A + '" fill-opacity="0.38"').replace(/class="mmf"/g, 'fill="#dcdbd8"');
+    return svg;
+  }
+  function rpLogoUrl() {
+    try { const m = getComputedStyle(document.documentElement).getPropertyValue('--logo-mask').match(/url\(["']?([^"')]+)["']?\)/); return m ? m[1] : null; } catch (e) { return null; }
+  }
+  function rpAssets(d) {
+    const A = rpAccent(), AI = rpAccentOnInk(), out = { icon: {} };
+    const icons = [['konsistensi', 'calendar-check', A], ['kekuatan', 'dumbbell', A], ['tubuh', 'person-standing', A], ['makan', 'utensils', A], ['menang', 'trophy', A], ['coach', 'user-round', AI], ['fokus', 'target', '#ffffff']];
+    const jobs = icons.map(function (ic) { const svg = rpIconSvg(ic[1], ic[2]); return svg ? rpImg(rpSvgUrl(svg)).then(im => { out.icon[ic[0]] = im; }) : null; });
+    const lu = rpLogoUrl(); if (lu) jobs.push(rpImg(lu).then(im => { out.logo = im; }));
+    const list = ((d.analisis || {}).volume || {}).figur || [];
+    if (list.length && window.figEnsure && window.mmLevels) jobs.push(window.figEnsure().then(function () {
+      const svg = rpFigSvg(window.mmLevels(list), d.jk === 'f' ? 'f' : 'm', A);
+      return svg ? rpImg(rpSvgUrl(svg)).then(im => { out.fig = im; }) : null;
+    }).catch(() => null));
+    return Promise.all(jobs.filter(Boolean)).then(() => out);
+  }
+  function rpFontsReady() {   // kanvas hanya memakai font yang sudah dimuat: muat Inter (semua ketebalan yang dipakai) dulu
+    try {
+      if (!document.fonts || !document.fonts.load) return Promise.resolve();
+      const want = ['400', '500', '600', '700', '800', '900'].map(w => document.fonts.load(w + ' 32px "Inter"'));
+      return Promise.race([Promise.all(want).then(() => document.fonts.ready), new Promise(r => setTimeout(r, 2500))]);
+    } catch (e) { return Promise.resolve(); }
+  }
+  const RPF = (w, px, fam) => (fam === 'big' ? 800 : w) + ' ' + px + 'px "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
   const rpN = (n, dp) => n == null || n === '' ? '–' : Number(n).toLocaleString('id-ID', { maximumFractionDigits: dp == null ? 1 : dp });
   const rpDelta = (x) => x == null || x === 0 ? '' : (x > 0 ? '+' : '−') + rpN(Math.abs(x));
   function rpRender(d, msg) {
-    return rpFontsReady().then(function () {
-      const A = rpAccent(), INK = '#111111', MUT = '#6b6b6b', LINE = '#e6e6e6', SOFT = '#f4f4f2';
+    return rpFontsReady().then(function () { return rpAssets(d); }).then(function (AS) {
+      const A = rpAccent(), INK = '#0b0b0b', MUT = '#676764', LINE = '#e7e5e4', SOFT = '#f5f5f4', BG = '#fafaf9', CARD = '#ffffff';
+      const track = px => { if ('letterSpacing' in c) c.letterSpacing = px + 'px'; };
+      function card(cx, cy, w, hh, r) {   // .card-flat: wit, rand --border, hoek --r-lg
+        c.fillStyle = CARD; rpRound(c, cx, cy, w, hh, r || 32); c.fill();
+        c.strokeStyle = LINE; c.lineWidth = 2; rpRound(c, cx + 1, cy + 1, w - 2, hh - 2, r || 32); c.stroke();
+      }
+      const AI = rpAccentOnInk();
+      let secNo = 0;
+      function logo(lx, ly, w, color) {   // logo = topeng PNG: diwarnai seperti .logo-mark (currentColor)
+        if (!AS.logo) return 0;
+        const hh = Math.round(w * AS.logo.height / AS.logo.width), t = document.createElement('canvas'); t.width = w * 2; t.height = hh * 2;
+        const g = t.getContext('2d'); g.drawImage(AS.logo, 0, 0, t.width, t.height); g.globalCompositeOperation = 'source-in'; g.fillStyle = color; g.fillRect(0, 0, t.width, t.height);
+        c.drawImage(t, lx, ly, w, hh); return hh;
+      }
+      function chip(key, cx, cy, size, bg) {   // ikon dalam kotak bulat, seperti .avatar
+        const im = AS.icon[key]; if (!im) return false;
+        if (bg) { c.fillStyle = bg; rpRound(c, cx, cy, size, size, size * 0.3); c.fill(); }
+        const p = size * 0.24; c.drawImage(im, cx + p, cy + p, size - 2 * p, size - 2 * p); return true;
+      }
+      function kontur(bx, by, bw, bh, r) {   // .gfx-kontur: garis kontur tipis di pita hitam
+        c.save(); rpRound(c, bx, by, bw, bh, r); c.clip();
+        c.strokeStyle = 'rgba(255,255,255,0.13)'; c.lineWidth = 2;
+        const ox = bx + bw * 0.86, oy = by + bh * 0.2;
+        for (let k = 1; k <= 14; k++) {
+          const rr = 34 * k; c.beginPath();
+          for (let a = 0; a <= 64; a++) {
+            const t = a / 64 * Math.PI * 2, w = 1 + 0.08 * Math.sin(t * 3 + k * 0.7) + 0.05 * Math.cos(t * 5 - k);
+            const px = ox + Math.cos(t) * rr * w * 1.35, py = oy + Math.sin(t) * rr * w;
+            if (a) c.lineTo(px, py); else c.moveTo(px, py);
+          }
+          c.closePath(); c.stroke();
+        }
+        c.restore();
+      }
+      function geo(bx, by, bw, bh, r) {   // .gfx-geo: lingkaran besar + titik aksen di kartu hitam
+        c.save(); rpRound(c, bx, by, bw, bh, r); c.clip();
+        c.fillStyle = 'rgba(255,255,255,0.06)'; c.beginPath(); c.arc(bx + bw - 60, by + 40, 230, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 2; c.beginPath(); c.arc(bx + bw - 60, by + 40, 300, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = AI; c.beginPath(); c.arc(bx + bw - 64, by + bh - 64, 18, 0, Math.PI * 2); c.fill();
+        c.restore();
+      }
+      function eyebrow(t, ex, ey, color) { c.font = RPF(700, 19); track(2.4); c.fillStyle = color || MUT; c.fillText(String(t).toUpperCase(), ex, ey); track(0); }
       const pages = [];
       let c, x, y;
       const contentW = RP_W - 2 * RP_M, bottom = RP_H - RP_M - RP_FOOT;
       function newPage() {
         const cv = document.createElement('canvas'); cv.width = RP_W; cv.height = RP_H;
-        c = cv.getContext('2d'); c.fillStyle = '#ffffff'; c.fillRect(0, 0, RP_W, RP_H);
+        c = cv.getContext('2d'); c.fillStyle = '#fafaf9'; c.fillRect(0, 0, RP_W, RP_H);
         c.textBaseline = 'alphabetic';
         pages.push(cv); x = RP_M; y = RP_M;
       }
@@ -14941,10 +15101,14 @@
       }
       function gap(n) { y += n; }
       function section(title) {
-        need(120);
-        c.fillStyle = A; c.fillRect(x, y + 6, 10, 40);
-        c.font = RPF(800, 38); c.fillStyle = INK; c.fillText(title, x + 26, y + 40);
-        y += 70;
+        need(120); secNo++;
+        const tag = String(secNo).padStart(2, '0');
+        c.fillStyle = INK; rpRound(c, x, y + 4, 64, 44, 14); c.fill();
+        c.font = RPF(800, 22); c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.fillText(tag, x + 32, y + 34); c.textAlign = 'left';
+        c.font = RPF(800, 40); track(-0.6); c.fillStyle = INK; c.fillText(title, x + 84, y + 40); const tw0 = c.measureText(title).width; track(0);
+        c.strokeStyle = LINE; c.lineWidth = 2; c.beginPath(); c.moveTo(x + 84 + tw0 + 24, y + 26); c.lineTo(x + contentW, y + 26); c.stroke();
+        c.fillStyle = A; c.beginPath(); c.arc(x + contentW - 6, y + 26, 6, 0, Math.PI * 2); c.fill();
+        y += 72;
       }
       function tiles(list) {
         const cols = 3, gw = 24, tw = (contentW - gw * (cols - 1)) / cols, th = 170;
@@ -14952,9 +15116,9 @@
           need(th + gw);
           list.slice(i, i + cols).forEach(function (t, k) {
             const tx = x + k * (tw + gw);
-            c.fillStyle = SOFT; rpRound(c, tx, y, tw, th, 22); c.fill();
-            c.font = RPF(600, 24); c.fillStyle = MUT; c.fillText(t.label, tx + 26, y + 44);
-            c.font = RPF(400, 64, 'big'); c.fillStyle = INK; c.fillText(t.value, tx + 26, y + 116);
+            card(tx, y, tw, th);
+            eyebrow(t.label, tx + 26, y + 44);
+            c.font = RPF(800, 60, 'big'); track(-1.5); c.fillStyle = INK; c.fillText(t.value, tx + 26, y + 114); track(0);
             if (t.sub) { c.font = RPF(600, 22); c.fillStyle = t.subColor || MUT; c.fillText(t.sub, tx + 26, y + 150); }
           });
           y += th + gw;
@@ -15010,85 +15174,316 @@
         if (label) text(label, 20, 500, MUT);
       }
 
-      newPage();
-      // Sampul: pita hitam dengan nama dan periode
-      c.fillStyle = INK; rpRound(c, RP_M, RP_M, contentW, 300, 36); c.fill();
-      c.fillStyle = A; c.fillRect(RP_M + 48, RP_M + 54, 80, 10);
-      c.font = RPF(700, 26); c.fillStyle = '#d8d8d8'; c.fillText('LAPORAN PROGRES', RP_M + 48, RP_M + 112);
-      c.font = RPF(400, 84, 'big'); c.fillStyle = '#ffffff'; c.fillText(String(d.name || '').toUpperCase().slice(0, 22), RP_M + 48, RP_M + 200);
-      c.font = RPF(600, 28); c.fillStyle = '#d8d8d8';
-      c.fillText(pgLabel(d.periode.from) + ' – ' + pgLabel(d.periode.to) + ' · ' + d.periode.days + ' hari' + (d.coach ? ' · ' + window.coachLabel(d.coach) : ''), RP_M + 48, RP_M + 252);
-      y = RP_M + 340;
-      if (msg) {   // pesan coach paling depan (paling dibaca)
-        section('Dari coach');
-        const mh = wrap(msg, RPF(500, 30), contentW - 60).length * 44 + 48;
-        need(mh); c.fillStyle = SOFT; rpRound(c, x, y, contentW, mh, 22); c.fill();
-        const y0 = y; y += 24; text(msg, 30, 500, INK, { x: x + 30, w: contentW - 60 }); y = Math.max(y, y0 + mh) + 24;
+      // ── AD5 (T-2451) alat gambar tambahan
+      const STC = { baik: A, cukup: '#8a8a8a', perlu: INK }, STL = { baik: 'Baik', cukup: 'Cukup', perlu: 'Perlu perhatian' };
+      function pill(px0, py0, label, bg, fg) {
+        c.font = RPF(700, 20); const w = c.measureText(label).width + 32;
+        c.fillStyle = bg; rpRound(c, px0, py0, w, 38, 19); c.fill(); c.fillStyle = fg; c.fillText(label, px0 + 16, py0 + 26); return w;
       }
-      section('Ringkasan');
+      function callout(t) {
+        if (!t) return;
+        const lines = wrap(t, RPF(500, 25), contentW - 70), hh = lines.length * 36 + 40;
+        need(hh + 16); card(x, y, contentW, hh, 28);
+        c.fillStyle = A; rpRound(c, x + 16, y + 16, 8, hh - 32, 4); c.fill();
+        const y0 = y; y += 18; text(t, 25, 500, INK, { x: x + 40, w: contentW - 70 }); y = y0 + hh + 16;
+      }
+      function lead(t) { if (t) { text(t, 30, 700, INK); gap(10); } }
+      function gauge(score, status, vonis) {   // kartu hitam (.insight-hero) dengan gfx-geo
+        const hh = 290; need(hh + 20);
+        const y0 = y;
+        c.fillStyle = '#1a1a19'; rpRound(c, x, y, contentW, hh, 40); c.fill();
+        geo(x, y, contentW, hh, 40);
+        const cx0 = x + 210, cy0 = y + 222, r = 145;
+        c.lineCap = 'round'; c.lineWidth = 32;
+        c.strokeStyle = 'rgba(255,255,255,0.14)'; c.beginPath(); c.arc(cx0, cy0, r, Math.PI, 2 * Math.PI); c.stroke();
+        if (score != null) { c.strokeStyle = AI; c.beginPath(); c.arc(cx0, cy0, r, Math.PI, Math.PI + Math.PI * Math.max(0.02, score / 100)); c.stroke(); }
+        c.lineCap = 'butt';
+        c.textAlign = 'center'; c.font = RPF(800, 100, 'big'); track(-3); c.fillStyle = '#ffffff'; c.fillText(score == null ? '–' : String(score), cx0, cy0 - 14); track(0);
+        c.font = RPF(600, 22); c.fillStyle = '#a7a7a4'; c.fillText('dari 100', cx0, cy0 + 24); c.textAlign = 'left';
+        const tx = x + 450, tw = contentW - 450 - 150;
+        y += 60;
+        eyebrow('Skor periode ini', tx, y, '#a7a7a4'); y += 22;
+        if (status) { pill(tx, y, STL[status], status === 'perlu' ? '#ffffff' : AI, status === 'perlu' ? '#0b0b0b' : '#0b0b0b'); y += 58; }
+        text(vonis, 30, 700, '#ffffff', { x: tx, w: tw });
+        y = y0 + hh + 20;
+      }
+      function pillars(list) {
+        const ps = list.filter(p => p.skor != null); if (!ps.length) return;
+        const cols = 2, gw = 20, tw = (contentW - gw) / cols, th = 196;
+        for (let i = 0; i < ps.length; i += cols) {
+          need(th + gw);
+          ps.slice(i, i + cols).forEach(function (p, k) {
+            const tx = x + k * (tw + gw);
+            card(tx, y, tw, th);
+            const hasI = chip(p.key, tx + 22, y + 18, 50, SOFT); c.font = RPF(800, 28); c.fillStyle = INK; c.fillText(p.label, tx + (hasI ? 86 : 26), y + 52);
+            c.font = RPF(800, 52, 'big'); track(-1.5); c.textAlign = 'right'; c.fillStyle = INK; c.fillText(String(p.skor), tx + tw - 26, y + 62); c.textAlign = 'left'; track(0);
+            c.fillStyle = LINE; rpRound(c, tx + 26, y + 80, tw - 52, 12, 6); c.fill();
+            c.fillStyle = STC[p.status]; rpRound(c, tx + 26, y + 80, Math.max(12, (tw - 52) * p.skor / 100), 12, 6); c.fill();
+            const ls = wrap(p.kalimat, RPF(500, 23), tw - 52).slice(0, 3);
+            c.font = RPF(500, 23); c.fillStyle = INK; ls.forEach((ln, li) => c.fillText(ln, tx + 26, y + 130 + li * 30));
+          });
+          y += th + gw;
+        }
+      }
+      function wins(list) {
+        if (!list.length) return;
+        const n = list.length, gw = 24, tw = (contentW - gw * (n - 1)) / n, th = 206;
+        need(th + 20);
+        list.forEach(function (w, k) {
+          const tx = x + k * (tw + gw);
+          card(tx, y, tw, th);
+          c.save(); rpRound(c, tx, y, tw, th, 32); c.clip();
+          c.font = RPF(800, 240, 'big'); track(-12); c.fillStyle = '#f1f0ee'; c.textAlign = 'right'; c.fillText(String(k + 1), tx + tw + 6, y + th + 40); c.textAlign = 'left'; track(0);
+          c.restore();
+          if (!chip('menang', tx + 20, y + 18, 46, SOFT)) { c.fillStyle = A; c.fillRect(tx + 24, y + 26, 46, 8); }
+          c.font = RPF(800, 54, 'big'); track(-1.5); c.fillStyle = INK; c.fillText(String(w.angka), tx + 24, y + 104); track(0);
+          c.font = RPF(800, 24); c.fillText(String(w.judul).slice(0, 26), tx + 24, y + 144);
+          c.font = RPF(500, 21); c.fillStyle = MUT; wrap(w.kalimat, RPF(500, 21), tw - 48).slice(0, 2).forEach((ln, li) => c.fillText(ln, tx + 24, y + 180 + li * 28));
+        });
+        y += th + 24;
+      }
+      function deltas(list) {   // ukuran awal → akhir: dua titik di satu garis, panah ke arah perubahan
+        list.forEach(function (u) {
+          need(90);
+          c.font = RPF(700, 26); c.fillStyle = INK; c.fillText(u.label, x, y + 34);
+          const bx = x + 260, bw = contentW - 520, a0 = Number(u.awal), a1 = Number(u.akhir);
+          const lo = Math.min(a0, a1), hi = Math.max(a0, a1), pad = Math.max((hi - lo) * 0.6, Math.abs(hi) * 0.02, 0.5);
+          const px = v => bx + bw * (v - (lo - pad)) / ((hi + pad) - (lo - pad));
+          c.strokeStyle = LINE; c.lineWidth = 6; c.lineCap = 'round'; c.beginPath(); c.moveTo(bx, y + 26); c.lineTo(bx + bw, y + 26); c.stroke();
+          if (a0 !== a1) { c.strokeStyle = A; c.lineWidth = 6; c.beginPath(); c.moveTo(px(a0), y + 26); c.lineTo(px(a1), y + 26); c.stroke(); }
+          c.lineCap = 'butt';
+          c.fillStyle = '#ffffff'; c.strokeStyle = MUT; c.lineWidth = 4; c.beginPath(); c.arc(px(a0), y + 26, 11, 0, Math.PI * 2); c.fill(); c.stroke();
+          c.fillStyle = A; c.beginPath(); c.arc(px(a1), y + 26, 13, 0, Math.PI * 2); c.fill();
+          c.font = RPF(500, 20); c.fillStyle = MUT; c.textAlign = 'center';
+          c.fillText(rpN(a0), px(a0), y + 70); if (a0 !== a1) { c.fillStyle = INK; c.fillText(rpN(a1), px(a1), y + 70); }
+          c.textAlign = 'right'; c.font = RPF(800, 28); c.fillStyle = INK; c.fillText(u.ubah ? rpDelta(u.ubah) + ' ' + u.unit : 'tetap', x + contentW, y + 38); c.textAlign = 'left';
+          y += 92;
+        });
+        text('Titik putih = awal periode · titik penuh = terakhir', 20, 500, MUT); gap(8);
+      }
+      function hbars(list, unitFn) {   // batang mendatar: sekarang (aksen) vs periode lalu (abu)
+        if (!list.length) return;
+        const mx = Math.max.apply(null, list.map(o => Math.max(o.v, o.prev || 0))) || 1, bx = x + 250, bw = contentW - 420;
+        list.forEach(function (o) {
+          need(64);
+          c.font = RPF(600, 24); c.fillStyle = INK; c.fillText(o.label, x, y + 30);
+          if (o.prev) { c.fillStyle = LINE; rpRound(c, bx, y + 36, Math.max(6, bw * o.prev / mx), 10, 5); c.fill(); }
+          c.fillStyle = A; rpRound(c, bx, y + 12, Math.max(6, bw * o.v / mx), 20, 8); c.fill();
+          c.textAlign = 'right'; c.font = RPF(700, 22); c.fillText(unitFn(o.v), x + contentW, y + 30); c.textAlign = 'left';
+          y += 64;
+        });
+        text('Batang warna = periode ini · garis abu = periode sebelumnya', 20, 500, MUT); gap(8);
+      }
+      function vbars(list, ref, label) {   // batang tegak per minggu dengan garis rata-rata periode lalu
+        if (!list.length) return;
+        const hh = 240, mx = Math.max(ref || 0, Math.max.apply(null, list.map(b => b.v))) || 1, bw = Math.min(90, (contentW - (list.length - 1) * 14) / list.length);
+        need(hh + 40);
+        list.forEach(function (b, i) {
+          const bx = x + i * (bw + 14), bh = Math.round((hh - 70) * b.v / mx);
+          c.fillStyle = b.dim || !b.v ? LINE : A; rpRound(c, bx, y + hh - 40 - Math.max(bh, 6), bw, Math.max(bh, 6), 10); c.fill();
+          c.font = RPF(600, 18); c.fillStyle = MUT; c.textAlign = 'center'; c.fillText(b.l, bx + bw / 2, y + hh - 10);
+          if (b.v) { c.fillStyle = INK; c.fillText(b.t || rpN(b.v, 0), bx + bw / 2, y + hh - 50 - bh); }
+          c.textAlign = 'left';
+        });
+        if (ref) {
+          const ry = y + hh - 40 - Math.round((hh - 70) * ref / mx);
+          c.setLineDash([12, 10]); c.strokeStyle = INK; c.lineWidth = 2; c.beginPath(); c.moveTo(x, ry); c.lineTo(x + contentW, ry); c.stroke(); c.setLineDash([]);
+        }
+        y += hh + 6;
+        if (label) text(label, 20, 500, MUT);
+        gap(8);
+      }
+      function spark(pts, sx, sy, sw, sh) {   // garis tren dengan area lembut, titik akhir aksen
+        if (!pts || pts.length < 2) return;
+        const vs = pts.map(p => Number(p.v)), mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs), span = (mx - mn) || 1;
+        const P = pts.map((p, i) => [sx + sw * i / (pts.length - 1), sy + sh - sh * (Number(p.v) - mn) / span]);
+        const gr = c.createLinearGradient(0, sy, 0, sy + sh); gr.addColorStop(0, 'rgba(11,11,11,0.14)'); gr.addColorStop(1, 'rgba(11,11,11,0)');
+        c.fillStyle = gr; c.beginPath(); c.moveTo(P[0][0], sy + sh); P.forEach(q => c.lineTo(q[0], q[1])); c.lineTo(P[P.length - 1][0], sy + sh); c.closePath(); c.fill();
+        c.strokeStyle = A; c.lineWidth = 4; c.lineJoin = 'round'; c.beginPath(); P.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.stroke();
+        P.forEach((q, i) => { if (i && i < P.length - 1) { c.fillStyle = '#ffffff'; c.strokeStyle = A; c.lineWidth = 3; c.beginPath(); c.arc(q[0], q[1], 5, 0, Math.PI * 2); c.fill(); c.stroke(); } });
+        const L = P[P.length - 1]; c.fillStyle = A; c.beginPath(); c.arc(L[0], L[1], 9, 0, Math.PI * 2); c.fill();
+      }
+
+
+      const S = d.skor || {}, AN = d.analisis || {};
+      newPage();
+      // ═══ Halaman 1: ringkasan satu halaman ═══
+      c.fillStyle = '#0b0b0b'; rpRound(c, RP_M, RP_M, contentW, 300, 44); c.fill(); kontur(RP_M, RP_M, contentW, 300, 44);
+      if (!logo(RP_M + 48, RP_M + 40, 64, '#ffffff')) { c.fillStyle = AI; c.fillRect(RP_M + 48, RP_M + 50, 80, 10); }
+      eyebrow('Laporan progres', RP_M + 48, RP_M + 146, '#a7a7a4');
+      c.font = RPF(800, 76, 'big'); track(-2.2); c.fillStyle = '#ffffff'; c.fillText(String(d.name || '').slice(0, 26), RP_M + 48, RP_M + 226); track(0);
+      c.font = RPF(500, 26); c.fillStyle = '#a7a7a4';
+      c.fillText(pgLabel(d.periode.from) + ' – ' + pgLabel(d.periode.to) + ' · ' + d.periode.days + ' hari', RP_M + 48, RP_M + 272);
+      if (d.coach) {   // kotak coach di kanan atas pita
+        const cn = String(d.coach).slice(0, 22); c.font = RPF(800, 26); const cw0 = Math.max(170, c.measureText(cn).width) + 104, bx0 = RP_M + contentW - 36 - cw0, by0 = RP_M + 36;
+        c.fillStyle = 'rgba(255,255,255,0.10)'; rpRound(c, bx0, by0, cw0, 84, 26); c.fill();
+        chip('coach', bx0 + 14, by0 + 14, 56, 'rgba(255,255,255,0.12)');
+        eyebrow('Coach', bx0 + 84, by0 + 36, '#a7a7a4');
+        c.font = RPF(800, 26); c.fillStyle = '#ffffff'; c.fillText(cn, bx0 + 84, by0 + 68);
+      }
+      y = RP_M + 330;
+      gauge(S.total, S.status, S.vonis || '');
+      pillars(S.pilar || []);
+      if ((d.menang || []).length) { need(72 + 230); section('Hal terbaik'); wins(d.menang); }
+      need(72 + 130); section('Fokus berikutnya');   // judul tidak pernah sendirian di bawah halaman
+      (d.fokus || []).forEach(function (f, i) {
+        const ls = wrap(f.kalimat, RPF(500, 26), contentW - 90), hh = 48 + ls.length * 36;
+        need(hh + 14);
+        c.fillStyle = A; c.beginPath(); c.arc(x + 26, y + 30, 24, 0, Math.PI * 2); c.fill();
+        c.font = RPF(800, 26); c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.fillText(String(i + 1), x + 26, y + 39); c.textAlign = 'left';
+        c.font = RPF(800, 26); c.fillStyle = INK; c.fillText(f.judul, x + 70, y + 38);
+        c.font = RPF(500, 26); ls.forEach((ln, li) => c.fillText(ln, x + 70, y + 76 + li * 36));
+        y += hh + 14;
+      });
+      if (msg) {   // pesan coach
+        gap(10); section('Dari coach');
+        const mh = wrap(msg, RPF(500, 28), contentW - 60).length * 40 + 44;
+        need(mh); card(x, y, contentW, mh);
+        const y0 = y; y += 22; text(msg, 28, 500, INK, { x: x + 30, w: contentW - 60 }); y = Math.max(y, y0 + mh) + 20;
+      }
+
+      // ═══ Halaman detail ═══
+      const block = function (title, minH) { if (y + minH > bottom) newPage(); else gap(28); section(title); };
+      if (pages.length > 1 || y + 500 > bottom) { if (y + 500 > bottom) newPage(); else gap(40); } else newPage();
+      eyebrow('Rincian', x, y + 22); y += 36;
+      text('Tiap bagian: satu kalimat inti, satu grafik, lalu "Artinya" untuk membacanya.', 26, 500, MUT); gap(16);
+      section('Angka utama');
       tiles((d.headline || []).map(function (t) {
         const unit = t.unit ? ' ' + t.unit : '';
         const val = t.key === 'volume' ? (t.value >= 10000 ? rpN(t.value / 1000, 1) + ' t' : rpN(t.value, 0) + ' kg') : t.of ? t.value + '/' + t.of : rpN(t.value) + (t.change ? unit : '');
-        const sub = t.change ? (t.delta ? rpDelta(t.delta) + unit + ' sejak awal' : 'tetap') : (t.prev != null ? (t.delta ? rpDelta(t.delta) + ' dari periode lalu' : 'sama dengan periode lalu') : '');
+        const dl = t.key === 'volume' && t.delta ? (Math.abs(t.delta) >= 1000 ? rpDelta(Math.round(t.delta / 100) / 10) + ' t' : rpDelta(t.delta) + ' kg') : rpDelta(t.delta);
+        const sub = t.change ? (t.delta ? rpDelta(t.delta) + unit + ' sejak awal' : 'tetap') : (t.prev != null ? (t.delta ? dl + ' dari periode lalu' : 'sama dgn periode lalu') : '');
         return { label: t.label, value: val, sub: sub };
       }));
-      (d.teks.ringkas || []).forEach(function (t) { text('• ' + t, 28, 500, INK); gap(4); });
-      gap(18);
-      section('Rencana ke depan');
-      (d.teks.lanjut || []).forEach(function (t) { text('→ ' + t, 28, 600, INK); gap(4); });
-
-      // Bagian baru mulai di halaman baru hanya bila sisa ruang tidak cukup (halaman tidak setengah kosong).
-      const block = function (title, minH) { if (y + minH > bottom) newPage(); else gap(24); section(title); };
       if (rp.sec.kehadiran) {
-        block('Kehadiran', 640);
-        tiles([{ label: 'Sesi selesai', value: String(d.kehadiran.sesi), sub: d.kehadiran.sesiPrev != null ? 'periode lalu ' + d.kehadiran.sesiPrev : '' },
-          { label: 'Streak', value: d.kehadiran.streak + ' mgg', sub: 'terbaik ' + d.kehadiran.bestStreak + ' minggu' }]);
-        bars((d.kehadiran.minggu || []).map(w => ({ l: pgLabel(w.minggu), v: w.sesi, dim: w.cuti })), 'Sesi dengan coach per minggu (mulai Senin; abu-abu = minggu cuti).');
-        rpCalendar(d, A, INK, MUT, LINE, SOFT);
+        const K = AN.kehadiran || {};
+        block('Kehadiran', 560);
+        lead(d.kehadiran.sesi + ' sesi selesai · rata-rata ' + rpN(K.perMinggu) + ' per minggu · streak ' + d.kehadiran.streak + ' minggu (terbaik ' + d.kehadiran.bestStreak + ').');
+        rpCalendar();
+        vbars((d.kehadiran.minggu || []).map(w => ({ l: pgLabel(w.minggu), v: w.sesi, dim: w.cuti })), 0, 'Sesi dengan coach per minggu (mulai Senin). Abu-abu = minggu cuti.');
         (d.cuti || []).forEach(function (h) { text((h.jenis === 'sakit' ? 'Sakit' : h.jenis === 'berhenti' ? 'Nonaktif' : 'Cuti') + ': ' + pgLabel(h.mulai) + (h.sampai !== h.mulai ? ' – ' + pgLabel(h.sampai) : ''), 24, 500, MUT); });
+        callout(K.tafsir);
       }
-      function rpCalendar() {
+      function rpCalendar() {   // kalender bulan sungguhan: judul bulan, Sen–Min, tanggal; sesi = kotak penuh, latihan sendiri = cincin, makan = titik
         const cal = d.kehadiran.calendar || {}, from = d.periode.from, to = d.periode.to;
-        const cell = 46, gp = 8, perRow = Math.floor((contentW + gp) / (cell + gp));
-        let n = 0; for (let t = from; t <= to; t = wkAddDays(t, 1)) n++;
-        const rowsN = Math.ceil(Math.min(n, 140) / perRow);
-        need(rowsN * (cell + gp) + 60);
-        let i = 0;
-        for (let t = from; t <= to && i < 140; t = wkAddDays(t, 1), i++) {
-          const cx = x + (i % perRow) * (cell + gp), cy = y + Math.floor(i / perRow) * (cell + gp), k = cal[t];
-          c.fillStyle = k === 'sesi' ? INK : k === 'latihan' ? A : k === 'makan' ? LINE : SOFT;
-          rpRound(c, cx, cy, cell, cell, 10); c.fill();
+        const BLN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        const dow = t => { const p = t.split('-').map(Number); return (new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay() + 6) % 7; };
+        const months = [];
+        for (let t = from.slice(0, 7) + '-01'; t <= to; ) { months.push(t); const p = t.split('-').map(Number); t = (p[1] === 12 ? (p[0] + 1) + '-01' : p[0] + '-' + String(p[1] + 1).padStart(2, '0')) + '-01'; }
+        const held = {};
+        (d.cuti || []).forEach(h => { for (let t = h.mulai; t <= h.sampai; t = wkAddDays(t, 1)) held[t] = true; });
+        const perRow = months.length > 1 ? 2 : 1, gw = 40, mw = (contentW - gw * (perRow - 1)) / perRow, cw = mw / 7, ch = Math.min(cw * 0.78, 74);
+        for (let mi = 0; mi < months.length; mi += perRow) {
+          const group = months.slice(mi, mi + perRow);
+          const rowsOf = m => { const p = m.split('-').map(Number), n = new Date(Date.UTC(p[0], p[1], 0)).getUTCDate(); return Math.ceil((dow(m) + n) / 7); };
+          const hh = 100 + Math.max.apply(null, group.map(rowsOf)) * ch;
+          need(hh + 10);
+          group.forEach(function (m, gi) {
+            const mx0 = x + gi * (mw + gw), p = m.split('-').map(Number), n = new Date(Date.UTC(p[0], p[1], 0)).getUTCDate(), off = dow(m);
+            c.font = RPF(800, 28); c.fillStyle = INK; c.fillText(BLN[p[1] - 1] + ' ' + p[0], mx0, y + 32);
+            c.font = RPF(700, 19); c.fillStyle = MUT; c.textAlign = 'center';
+            ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].forEach((w, k) => c.fillText(w, mx0 + cw * k + cw / 2, y + 74));
+            for (let dd = 1; dd <= n; dd++) {
+              const t = m.slice(0, 8) + String(dd).padStart(2, '0'), i = off + dd - 1, cx = mx0 + (i % 7) * cw + cw / 2, cy = y + 92 + Math.floor(i / 7) * ch + ch / 2;
+              const inP = t >= from && t <= to, k = cal[t], r = Math.min(cw, ch) / 2 - 5;
+              if (inP && held[t]) { c.fillStyle = '#ecebe9'; rpRound(c, cx - r, cy - r, 2 * r, 2 * r, 10); c.fill(); }
+              if (inP && k === 'sesi') { c.fillStyle = A; rpRound(c, cx - r, cy - r, 2 * r, 2 * r, 10); c.fill(); }
+              else if (inP && k === 'latihan') { c.strokeStyle = A; c.lineWidth = 4; rpRound(c, cx - r + 2, cy - r + 2, 2 * r - 4, 2 * r - 4, 10); c.stroke(); }
+              c.font = RPF(k === 'sesi' || k === 'latihan' ? 800 : 500, 22); c.fillStyle = !inP ? LINE : k === 'sesi' ? '#ffffff' : INK;
+              c.fillText(String(dd), cx, cy + 8);
+              if (inP && k === 'makan') { c.fillStyle = MUT; c.beginPath(); c.arc(cx, cy + 22, 4, 0, Math.PI * 2); c.fill(); }
+            }
+            c.textAlign = 'left';
+          });
+          y += hh + 10;
         }
-        y += rowsN * (cell + gp) + 10;
-        text('Hitam = sesi dengan coach · warna = latihan sendiri · abu = catat makan saja', 20, 500, MUT);
-        gap(10);
+        let lx = x;
+        [['Sesi dengan coach', 'fill'], ['Latihan sendiri', 'ring'], ['Hanya catat makan', 'dot'], ['Cuti / sakit', 'soft']].forEach(function (L) {
+          if (L[1] === 'fill') { c.fillStyle = A; rpRound(c, lx, y + 4, 28, 28, 7); c.fill(); }
+          else if (L[1] === 'ring') { c.strokeStyle = A; c.lineWidth = 4; rpRound(c, lx + 2, y + 6, 24, 24, 7); c.stroke(); }
+          else if (L[1] === 'dot') { c.fillStyle = MUT; c.beginPath(); c.arc(lx + 14, y + 18, 5, 0, Math.PI * 2); c.fill(); }
+          else { c.fillStyle = '#ecebe9'; rpRound(c, lx, y + 4, 28, 28, 7); c.fill(); }
+          c.font = RPF(600, 20); c.fillStyle = MUT; c.fillText(L[0], lx + 38, y + 26); lx += 48 + c.measureText(L[0]).width + 30;
+        });
+        y += 50;
       }
       if (rp.sec.latihan) {
-        block('Latihan', 560);
-        const L = d.latihan;
-        tiles([{ label: 'Hari latihan', value: String(L.hari) }, { label: 'Set', value: rpN(L.set, 0) }, { label: 'Volume', value: L.volume >= 10000 ? rpN(L.volume / 1000, 1) + ' t' : rpN(L.volume, 0) + ' kg', sub: L.volumePrev ? 'periode lalu ' + rpN(L.volumePrev, 0) + ' kg' : '' }]);
-        (L.angkatan || []).forEach(function (a) {
-          need(a.titik && a.titik.length > 1 ? 400 : 60);   // judul tidak terpisah dari grafiknya
-          text(a.gerakan + ' · estimasi 1RM ' + rpN(a.awal) + ' → ' + rpN(a.akhir) + ' kg' + (a.pct ? ' (' + (a.pct > 0 ? '+' : '') + a.pct + '%)' : ''), 28, 700, INK);
-          line(a.titik, 'estimasi 1RM', 'kg');
-        });
-        if ((L.rekor || []).length) { text('Rekor pribadi', 26, 700, INK); L.rekor.forEach(r => text('🏆 ' + r.gerakan + ' · ' + pgLabel(r.tanggal), 24, 500, INK)); gap(10); }
-        if ((L.otot || []).length) bars(L.otot.map(o => ({ l: String(o.part).slice(0, 9), v: Math.round(o.volume) })), 'Volume per bagian tubuh (4 minggu terakhir periode).');
-        if (!L.hari) text('Belum ada latihan yang dicatat di periode ini.', 26, 500, MUT);
+        const L = d.latihan, all = L.angkatanSemua || L.angkatan || [];
+        block('Kekuatan', 520);
+        const up = all.filter(a => a.kali >= 2 && a.pct > 0).length;
+        lead(all.length ? up + ' dari ' + all.length + ' gerakan makin kuat' + ((L.rekor || []).length ? ' · ' + L.rekor.length + ' rekor pribadi.' : '.') : 'Belum ada latihan beban yang dicatat.');
+        if (all.length) {
+          table([['Gerakan', 'Set terbaik', 'Perkiraan maks.', 'Perubahan']].concat(all.map(a => [String(a.gerakan).slice(0, 26), a.terbaik ? rpN(a.terbaik.berat) + ' kg × ' + a.terbaik.rep : '–', rpN(a.akhir) + ' kg', a.kali >= 2 ? (a.pct > 0 ? '+' : '') + a.pct + '% ' + (a.pct > 0 ? '↑' : a.pct < 0 ? '↓' : '→') : 'baru 1×'])), [0.4, 0.2, 0.2, 0.2]);
+          const ch = all.filter(a => a.titik && a.titik.length > 1).slice(0, 3);
+          if (ch.length) {
+            const gw = 24, tw = (contentW - gw * (ch.length - 1)) / ch.length, th = 230; need(th + 20);
+            ch.forEach(function (a, k) {
+              const tx = x + k * (tw + gw);
+              card(tx, y, tw, th);
+              c.font = RPF(700, 22); c.fillStyle = INK; c.fillText(String(a.gerakan).slice(0, 22), tx + 20, y + 40);
+              spark(a.titik, tx + 24, y + 70, tw - 48, 100);
+              c.font = RPF(600, 20); c.fillStyle = MUT; c.fillText(rpN(a.awal) + ' kg', tx + 20, y + 206);
+              c.textAlign = 'right'; c.fillStyle = INK; c.fillText(rpN(a.akhir) + ' kg', tx + tw - 20, y + 206); c.textAlign = 'left';
+            });
+            y += th + 20;
+          }
+          if ((L.rekor || []).length) { text('Rekor pribadi: ' + L.rekor.map(r => r.gerakan + ' (' + pgLabel(r.tanggal) + ')').join(' · '), 22, 600, INK); gap(8); }
+        }
+        callout((AN.kekuatan || {}).tafsir);
+        const V = AN.volume || {};
+        if (L.hari) {
+          block('Volume & keseimbangan', 560);
+          lead(L.hari + ' hari latihan · ' + rpN(L.set, 0) + ' set · ' + (L.volume >= 10000 ? rpN(L.volume / 1000, 1) + ' ton' : rpN(L.volume, 0) + ' kg') + ' total' + (L.volumePrev ? ' (periode lalu ' + (L.volumePrev >= 10000 ? rpN(L.volumePrev / 1000, 1) + ' ton' : rpN(L.volumePrev, 0) + ' kg') + ').' : '.'));
+          const kt = v => v >= 10000 ? rpN(v / 1000, 1) + 't' : rpN(v / 1000, 1) + 't';
+          vbars((V.mingguan || []).map(w => ({ l: pgLabel(w.minggu), v: w.v, t: kt(w.v), dim: w.cuti })), V.rataPrev, 'Volume per minggu (ton). Garis putus = rata-rata per minggu periode sebelumnya.');
+          if (AS.fig) {   // figur tubuh: depan + belakang, otot utama penuh, pendukung pudar
+            const fh = 560; need(fh + 60); card(x, y, contentW, fh + 20);
+            c.drawImage(AS.fig, x + 30, y + 10, fh, fh);
+            const lx0 = x + fh + 70; let ly = y + 70;
+            eyebrow('Otot yang dilatih', lx0, ly); ly += 46;
+            [[A, 1, 'Otot utama'], [A, 0.38, 'Otot pendukung'], ['#dcdbd8', 1, 'Belum dilatih']].forEach(function (L) {
+              c.globalAlpha = L[1]; c.fillStyle = L[0]; rpRound(c, lx0, ly - 24, 30, 30, 8); c.fill(); c.globalAlpha = 1;
+              c.font = RPF(600, 24); c.fillStyle = INK; c.fillText(L[2], lx0 + 46, ly); ly += 50;
+            });
+            ly += 10; c.font = RPF(500, 22); c.fillStyle = MUT;
+            wrap('Depan (kiri) dan belakang (kanan). Dihitung dari gerakan yang dicatat di periode ini.', RPF(500, 22), contentW - fh - 100).forEach(function (ln) { c.fillText(ln, lx0, ly); ly += 32; });
+            y += fh + 44;
+          }
+          if ((V.otot || []).length) { text('Per bagian tubuh', 26, 800, INK); gap(6); hbars(V.otot, v => (v >= 1000 ? rpN(v / 1000, 1) + ' t' : rpN(v, 0) + ' kg')); }
+          callout(V.tafsir);
+        }
       }
       if (rp.sec.tubuh) {
+        const T = AN.tubuh || {};
         block('Tubuh', 520);
+        const lb = (T.laju || []).find(l => l.key === 'berat');
+        lead((d.tubuh.ukuran || []).length ? (lb ? 'Berat ' + rpDelta(lb.perMinggu) + ' kg per minggu.' : 'Ukuran tubuh periode ini.') : 'Belum ada ukuran tubuh di periode ini.');
         line(d.tubuh.berat, 'berat badan', 'kg');
-        if ((d.tubuh.ukuran || []).length) table([['Ukuran', 'Awal', 'Akhir', 'Perubahan']].concat(d.tubuh.ukuran.map(u => [u.label, rpN(u.awal) + ' ' + u.unit, rpN(u.akhir) + ' ' + u.unit, u.ubah ? rpDelta(u.ubah) + ' ' + u.unit : 'tetap'])), [0.4, 0.2, 0.2, 0.2]);
-        else text('Belum ada ukuran tubuh yang dicatat di periode ini.', 26, 500, MUT);
-        if ((d.tes || []).length) { gap(10); text('Tes kebugaran', 30, 800, INK); gap(6); table([['Tes', 'Sebelumnya', 'Terakhir', 'Perubahan']].concat(d.tes.map(t => [t.label, t.awal == null ? '–' : rpN(t.awal), rpN(t.akhir) + ' ' + String(t.unit).split(' ')[0], t.ubah == null ? '–' : rpDelta(t.ubah) + (t.membaik ? ' ✓' : '')])), [0.4, 0.2, 0.2, 0.2]); }
+        deltas(d.tubuh.ukuran || []);
+        if ((d.tes || []).length) { gap(6); text('Tes kebugaran', 28, 800, INK); gap(6); table([['Tes', 'Sebelumnya', 'Terakhir', 'Hasil']].concat(d.tes.map(t => [t.label, t.awal == null ? '–' : rpN(t.awal), rpN(t.akhir) + ' ' + String(t.unit).split(' ')[0], t.ubah == null ? 'tes pertama' : t.membaik ? 'membaik ' + rpDelta(t.ubah) : t.ubah === 0 ? 'tetap' : 'turun ' + rpDelta(t.ubah)])), [0.4, 0.2, 0.2, 0.2]); }
+        callout(T.tafsir);
       }
       if (rp.sec.makan && d.makan) {
-        block('Makan', 330);
-        const M = d.makan;
-        tiles([{ label: 'Hari tercatat', value: M.hari + '/' + M.dari }, { label: 'Rata-rata kalori', value: rpN(M.kal, 0), sub: M.targetKal ? 'target ' + rpN(M.targetKal, 0) + ' kkal' : 'kkal' },
-          { label: 'Protein', value: rpN(M.protein, 0) + ' g', sub: M.targetProtein ? 'target ' + rpN(M.targetProtein, 0) + ' g' : '' }]);
-        if (M.proteinCukup != null && M.hari) text('Protein cukup di ' + M.proteinCukup + ' dari ' + M.hari + ' hari yang tercatat.', 26, 500, INK);
+        const M = d.makan, MD = AN.makan || {};
+        block('Makan', 520);
+        lead('Tercatat ' + M.hari + ' dari ' + M.dari + ' hari · rata-rata ' + rpN(M.kal, 0) + ' kkal' + (M.targetKal ? ' (target ' + rpN(M.targetKal, 0) + ')' : '') + ' · protein ' + rpN(M.protein, 0) + ' g' + (M.targetProtein ? ' (target ' + rpN(M.targetProtein, 0) + ')' : '') + '.');
+        const hk = (MD.hariKal || []).slice(-28);
+        if (hk.length >= 3) {
+          const hh = 240, tg = M.targetKal || 0, mx = Math.max(tg * 1.3, Math.max.apply(null, hk.map(h => h.v))) || 1, bw = Math.min(36, (contentW - (hk.length - 1) * 6) / hk.length);
+          need(hh + 40);
+          const py = v => y + hh - 30 - (hh - 50) * v / mx;
+          if (tg) { c.fillStyle = SOFT; c.fillRect(x, py(tg * 1.1), contentW, py(tg * 0.9) - py(tg * 1.1)); }
+          hk.forEach(function (h, i) {
+            const bx = x + i * (bw + 6), inBand = tg && Math.abs(h.v - tg) <= tg * 0.1;
+            c.fillStyle = inBand || !tg ? A : MUT; rpRound(c, bx, py(h.v), bw, Math.max(4, y + hh - 30 - py(h.v)), 6); c.fill();
+          });
+          c.font = RPF(500, 18); c.fillStyle = MUT; c.fillText(pgLabel(hk[0].tanggal), x, y + hh); c.textAlign = 'right'; c.fillText(pgLabel(hk[hk.length - 1].tanggal), x + contentW, y + hh); c.textAlign = 'left';
+          y += hh + 10;
+          text('Tiap batang = satu hari tercatat. Pita abu = target ±10 %; batang warna = pas target.', 20, 500, MUT); gap(8);
+        }
+        tiles([{ label: 'Pas target', value: MD.pasTarget != null ? MD.pasTarget + ' hari' : '–' }, { label: 'Protein cukup', value: M.proteinCukup != null ? M.proteinCukup + ' hari' : '–' },
+          { label: 'Hari kerja / akhir pekan', value: (MD.rataKerja ? rpN(MD.rataKerja, 0) : '–') + ' / ' + (MD.rataAkhirPekan ? rpN(MD.rataAkhirPekan, 0) : '–'), sub: 'kkal rata-rata' }]);
+        callout(MD.tafsir);
       }
       if (rp.sec.catatan && (d.catatan || []).length) {
         block('Catatan sesi', 260);
@@ -15099,13 +15494,22 @@
           gap(14);
         });
       }
+      if ((AN.glosarium || []).length) {
+        block('Istilah', 260);
+        AN.glosarium.forEach(g => { text(g[0] + ': ' + g[1], 22, 500, MUT); gap(2); });
+      }
       // Kaki halaman: nama merek, nama klien, nomor halaman
       const brand = window.brandName ? window.brandName() : 'XNK';
       pages.forEach(function (cv, i) {
         const g = cv.getContext('2d');
         g.strokeStyle = LINE; g.lineWidth = 2; g.beginPath(); g.moveTo(RP_M, RP_H - RP_M - 20); g.lineTo(RP_W - RP_M, RP_H - RP_M - 20); g.stroke();
-        g.font = RPF(600, 20); g.fillStyle = MUT; g.textAlign = 'left';
-        g.fillText(brand + ' · ' + (d.name || '') + ' · dibuat ' + pgLabel(d.dibuat), RP_M, RP_H - RP_M + 14);
+        let fx = RP_M;
+        if (AS.logo) { const lw = 30, lh = Math.round(lw * AS.logo.height / AS.logo.width), t = document.createElement('canvas'); t.width = lw * 2; t.height = lh * 2;
+          const tg = t.getContext('2d'); tg.drawImage(AS.logo, 0, 0, t.width, t.height); tg.globalCompositeOperation = 'source-in'; tg.fillStyle = INK; tg.fillRect(0, 0, t.width, t.height);
+          g.drawImage(t, fx, RP_H - RP_M + 14 - lh + 4, lw, lh); fx += lw + 12; }
+        g.font = RPF(800, 20); g.fillStyle = INK; g.textAlign = 'left'; g.fillText(brand, fx, RP_H - RP_M + 14); fx += g.measureText(brand).width;
+        g.font = RPF(600, 20); g.fillStyle = MUT;
+        g.fillText(' · ' + (d.name || '') + (d.coach ? ' · ' + window.coachLabel(d.coach) : '') + ' · dibuat ' + pgLabel(d.dibuat), fx, RP_H - RP_M + 14);
         g.textAlign = 'right'; g.fillText((i + 1) + ' / ' + pages.length, RP_W - RP_M, RP_H - RP_M + 14); g.textAlign = 'left';
       });
       return Promise.all(pages.map(function (cv) {
@@ -15146,4 +15550,79 @@
   }
   window.pdfFromJpegs = pdfFromJpegs;   // untuk tools/report-check.js
   window.rpBlob = function () { return rp.blob; };
+  // ── Fase AE (T-2500+): login per coach ───────────────────────────────────────────────────────────────────────
+  // window.adminMe datang dari adminLogin / getAdminBootstrap.me. Coach: menu tanpa Pengaturan dan Konten, tanpa tombol
+  // pemilik di halaman Coach; server tetap yang menjaga (Lingkup.gs), tampilan ini hanya merapikan.
+  window.setAdminMe = function (me) {
+    const prev = window.isCoachRole();
+    window.adminMe = me && me.role ? me : { role: 'owner' };
+    _lsSet('xnk_admin_me', JSON.stringify(window.adminMe));
+    document.documentElement.classList.toggle('coach-role', window.isCoachRole());
+    if (prev !== window.isCoachRole() && ui.mode === 'admin') buildChrome();
+  };
+  document.documentElement.classList.toggle('coach-role', window.isCoachRole());
+
+  let cpinId = '';
+  window.coachPinOpen = function (id) {
+    const c = (window.coachesAll || []).filter(function (x) { return x.id === id; })[0] || { id: id, name: '' };
+    cpinId = id;
+    $('cpin-sub').textContent = (c.hasPin ? 'Ganti PIN login untuk ' : 'Buat PIN login untuk ') + (c.name || 'coach ini') + '. Coach masuk lewat halaman login panel yang sama.';
+    $('cpin-pin').value = '';
+    $('cpin-del').classList.toggle('hide', !c.hasPin);
+    window.openSheet('sheet-cpin');
+  };
+  function cpinSend(pin, okText) {
+    const done = busy($('cpin-save'), 'Menyimpan…');
+    adminCall('setCoachPin', cpinId, pin).then(function (r) {
+      done();
+      (window.coachesAll || []).forEach(function (x) { if (x.id === cpinId) x.hasPin = !!(r && r.hasPin); });
+      window.closeModal();
+      window.showToast(okText);
+      if (window.currentCoachId === cpinId && window.openCoachProfile) window.openCoachProfile(cpinId);
+    }, function (err) { done(); window.showToast(window.waitErr ? window.waitErr(err) : window.authMessage(err)); });
+  }
+  window.coachPinSave = function (e) {
+    if (e) e.preventDefault();
+    const pin = $('cpin-pin').value.trim();
+    if (!/^\d{6}$/.test(pin)) { window.showToast('PIN coach harus 6 angka.'); $('cpin-pin').focus(); return; }
+    cpinSend(pin, 'PIN coach disimpan.');
+  };
+  window.coachPinDelete = function () { cpinSend('', 'PIN coach dihapus.'); };
+  // ── Pilih / pindah coach klien (pemilik) ──
+  const mc = { ids: [], pick: '' };
+  window.mcoachOpen = function (memberId) {
+    const coaches = (window.coaches || []).filter(function (c) { return c.aktif !== false; });
+    if (!coaches.length) { window.showToast('Belum ada coach aktif.'); return; }
+    const m = memberId ? (window.members || []).filter(function (x) { return String(x.id) === String(memberId); })[0] : null;
+    mc.ids = m ? [m.id] : (window.members || []).filter(function (x) { return !x.preferredCoachId; }).map(function (x) { return x.id; });
+    if (!mc.ids.length) { window.showToast('Semua klien sudah punya coach.'); return; }
+    mc.pick = m && m.preferredCoachId ? String(m.preferredCoachId) : '';
+    $('mc-title').textContent = m ? (m.preferredCoachId ? 'Pindah coach' : 'Pilih coach') : 'Tetapkan coach';
+    $('mc-sub').textContent = m ? m.name + (m.preferredCoachName ? ' · sekarang ' + window.coachLabel(m.preferredCoachName) : ' · belum punya coach') : mc.ids.length + ' klien belum punya coach.';
+    mcDraw(coaches);
+    window.openSheet('sheet-mcoach');
+  };
+  function mcDraw(coaches) {
+    setHTML('mc-list', (coaches || window.coaches || []).filter(function (c) { return c.aktif !== false; }).map(function (c) {
+      const on = String(c.id) === mc.pick;
+      return '<button type="button" class="bk-opt' + (on ? ' on' : '') + '" role="radio" aria-checked="' + on + '" data-id="' + h(String(c.id)) + '" onclick="window.mcoachPick(this.dataset.id)">' + avatar(c.photo, c.name, 'sm') +
+        '<span class="grow"><b>' + h(c.name) + '</b>' + (c.specialty ? '<span class="li-sub" style="display:block">' + h(c.specialty) + '</span>' : '') + '</span>' + (on ? icon('check') : '') + '</button>';
+    }).join(''));
+  }
+  window.mcoachPick = function (id) { mc.pick = String(id); mcDraw(); };
+  window.mcoachSave = function () {
+    if (!mc.pick) { window.showToast('Pilih coach dulu.'); return; }
+    const move = $('mc-move').checked, done = busy($('mc-save'), 'Menyimpan…');
+    const one = mc.ids.length === 1;
+    (one ? adminCall('setMemberCoach', mc.ids[0], mc.pick, { moveSessions: move }) : adminCall('assignClientsToCoach', mc.ids, mc.pick, { moveSessions: move })).then(function (r) {
+      done();
+      const keep = {};
+      (r.members || []).forEach(function (id) { keep[String(id)] = true; });
+      (window.members || []).forEach(function (m) { if (keep[String(m.id)]) { m.preferredCoachId = r.coachId; m.preferredCoachName = r.coachName; } });
+      (r.moved || []).forEach(function (sid) { const s = window.schedById ? window.schedById(sid) : null; if (s) { s.coachId = r.coachId; s.coachName = r.coachName; } });
+      window.closeModal();
+      window.showToast((one ? 'Coach diganti' : (r.members || []).length + ' klien diberi coach') + ((r.kept || []).length ? '. ' + r.kept.length + ' sesi bentrok tetap di coach lama.' : '.'));
+      if (window.updateUI) window.updateUI();
+    }, function (err) { done(); window.showToast(window.waitErr ? window.waitErr(err) : window.authMessage(err)); });
+  };
 })();
