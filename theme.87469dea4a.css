@@ -2184,6 +2184,7 @@ details.fold #profile-tasks-wrap > .section-head { justify-content: flex-end; ma
 .share-preview.solid { background: #050505; }
 .share-preview img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
 .share-preview .sh-anim { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.share-preview .sh-cnv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .share-sheet .sh-play { gap: 6px; }
 .share-preview:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .sh-busy { position: absolute; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: flex-end; }
@@ -3430,3 +3431,50 @@ details.cp-day[open] .cp-day-names { display: none; }
 .cp-coach-row svg { width: 16px; height: 16px; }
 .cp-link-ink { background: none; border: 0; padding: 0 2px; min-height: 44px; color: var(--on-band); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 @media (max-width: 767px) { .cp-card .cp-coach-row { margin-top: 0; font-size: var(--fs-sm); } .cp-card .cp-coach-row svg { display: none; } .cp-card .cp-link-ink { min-height: 44px; padding: 0 6px; margin: -12px 0; } }
+/* Fase AF: paket coach (kartu Paket Anda, menu terkunci, lembar Tersedia di Pro) */
+.plan-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.plan-tier { font-weight: 800; }
+.plan-m { display: grid; gap: 6px; }
+.plan-mh { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-sm); color: var(--fg-muted); }
+.plan-mh b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.plan-bar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 10%, transparent); overflow: hidden; }
+.plan-bar i { display: block; height: 100%; border-radius: inherit; background: var(--fg); }
+.plan-bar.full i { background: var(--danger); }
+.plan-warn { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--fg) 6%, transparent); font-size: var(--fs-sm); }
+.plan-warn svg { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.nav-item.nav-locked { color: var(--fg-muted); opacity: .6; }
+.plan-pill { margin-left: auto; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; font-size: .7rem; font-weight: 700; line-height: 1.5; }
+.cp-tab.tab-locked { opacity: .5; }
+.plan-tier { padding: 2px 12px; border-radius: 999px; background: var(--fg); color: var(--bg); font-size: var(--fs-sm); }
+.plan-rows { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 8px; border-radius: 12px; background: color-mix(in srgb, var(--fg) 6%, transparent); font-size: var(--fs-sm); }
+.plan-rows li { display: flex; gap: 8px; align-items: center; }
+.plan-rows li.bad { color: var(--danger); }
+.plan-rows svg, .plan-foot svg { flex: none; width: 16px; height: 16px; }
+.plan-cap { margin: 4px 0 0; font-size: var(--fs-xs, .78rem); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-muted); }
+.plan-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.plan-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 0 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--fg) 14%, transparent); font-size: var(--fs-sm); color: var(--fg-muted); }
+.plan-chip svg { width: 13px; height: 13px; }
+.plan-up { text-decoration: none; }
+.plan-foot { display: flex; gap: 6px; align-items: center; margin: 0; font-size: var(--fs-xs, .78rem); color: var(--fg-muted); }
+.plan-fold { border-top: 1px solid color-mix(in srgb, var(--fg) 10%, transparent); padding-top: 4px; }
+.plan-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; list-style: none; cursor: pointer; font-weight: 700; }
+.plan-fold > summary::-webkit-details-marker { display: none; }
+.plan-fold > summary b { margin-left: auto; padding: 0 8px; border-radius: 999px; background: color-mix(in srgb, var(--fg) 8%, transparent); font-size: var(--fs-sm); }
+.plan-fold > summary svg { width: 16px; height: 16px; flex: none; }
+.plan-fold > summary svg:last-child { transition: transform .15s; }
+.plan-fold[open] > summary svg:last-child { transform: rotate(180deg); }
+.plan-fold > .plan-chips { padding-bottom: 6px; }
+/* ── Fase AG: editor poster coach. Memakai kerangka editor kartu bagikan (.share-sheet, .sh-*); di sini hanya tambahannya. ── */
+.sh-btns #po-go { flex: 1; }
+@media (min-width: 768px) { .sh-btns #po-go { flex: none; min-width: 9rem; } }
+.po-msg { margin: 0; max-width: 28rem; text-align: center; font-size: var(--fs-sm); color: var(--fg-2); }
+.po-list { display: flex; flex-direction: column; border-radius: 12px; background: var(--surface-2); overflow: hidden; }
+.po-li { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; padding: 10px 12px; text-align: left; color: var(--fg); background: transparent; border: 0; }
+.po-li + .po-li { border-top: 1px solid var(--border); }
+.po-li b { font-size: var(--fs-sm); }
+.po-li span { font-size: var(--fs-xs); color: var(--fg-muted); }
+.po-li.active { background: var(--surface-3); box-shadow: inset 3px 0 0 var(--fg); }
+.poster-sheet .field { display: flex; flex-direction: column; gap: 4px; }
+.poster-sheet .label { color: var(--fg-muted); }
+.po-consent { gap: 12px; margin-bottom: 12px; }
+@media (hover: hover) { .po-li:hover:not(.active) { background: var(--surface-3); } }

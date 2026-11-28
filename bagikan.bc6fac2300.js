@@ -82,7 +82,14 @@
       localStorage.setItem(PREF_KEY, JSON.stringify(p));
     } catch (e) {}
   }
-  function kp(kind) { kind = kind || st.kind; P.k[kind] = Object.assign({}, KDEF, P.k[kind] || {}); return P.k[kind]; }
+  // Satu objek per kartu yang sama terus (dulu tiap panggilan membuat objek baru, sehingga isian yang ditulis ke objek lama hilang).
+  function kp(kind) {
+    kind = kind || st.kind;
+    const cur = P.k[kind];
+    if (!cur || typeof cur !== 'object') { P.k[kind] = JSON.parse(JSON.stringify(KDEF)); return P.k[kind]; }
+    Object.keys(KDEF).forEach(function (x) { if (cur[x] === undefined) cur[x] = Array.isArray(KDEF[x]) ? KDEF[x].slice() : KDEF[x]; });
+    return cur;
+  }
 
   // ── format ───────────────────────────────────────────────────────────────────
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1222,7 +1229,7 @@
       '<h2 class="sh-title" id="share-title">Bagikan</h2><button type="button" class="btn btn-ghost btn-sm sh-reset" onclick="window.shareReset()">Reset</button></div>' +
       '<div class="sh-main"><div class="sh-stage" id="share-stage">' +
       '<button type="button" class="icon-btn plain sh-arrow prev" onclick="window.shareStep(-1)" aria-label="Kartu sebelumnya">' + ic('chevron-left') + '</button>' +
-      '<div class="share-preview" id="share-box" role="button" tabindex="0" aria-label="Pratinjau kartu. Geser untuk ganti kartu, ketuk untuk layar penuh."><img id="share-img" alt="Pratinjau kartu bagikan" draggable="false"><div class="sh-busy hide" id="share-busy"></div></div>' +
+      '<div class="share-preview" id="share-box" role="button" tabindex="0" aria-label="Pratinjau kartu. Geser untuk ganti kartu, ketuk untuk layar penuh."><img id="share-img" alt="Pratinjau kartu bagikan" draggable="false"><canvas id="share-cnv" class="sh-cnv hide" aria-hidden="true"></canvas><div class="sh-busy hide" id="share-busy"></div></div>' +
       '<button type="button" class="icon-btn plain sh-arrow next" onclick="window.shareStep(1)" aria-label="Kartu berikutnya">' + ic('chevron-right') + '</button>' +
       '<div class="sh-dots" id="share-dots" aria-hidden="true"></div></div>' +
       '<div class="sh-side"><div class="sh-tools" id="share-tabs" role="tablist" aria-label="Alat kartu"></div><div class="sh-body" id="share-body"></div></div></div>' +
@@ -1420,23 +1427,42 @@
   function refresh() {
     if (st.playing) stopPlay();
     clearTimeout(timer);
+    clearTimeout(st.blobT); st.blobOk = false;
     timer = setTimeout(async function () {
       if (!st.card) return;
       const my = ++st.token;
       const o = opts();
-      const cnv = await draw(st.card, o);
-      const blob = await new Promise(r => cnv.toBlob(r, 'image/png'));
-      if (my !== st.token || !blob) return;
-      st.blob = blob; if (st.url) URL.revokeObjectURL(st.url); st.url = URL.createObjectURL(blob);
-      const im = $('share-img'); if (im) im.src = st.url;
       const box = $('share-box');
       st.ratio = o.H / 1080; fitBox();
+      // Pratinjau cepat: digambar langsung di kanvas seukuran kotak pratinjau (bukan PNG 1080 px tiap perubahan).
+      const cv = $('share-cnv');
+      if (cv && box && box.clientWidth) {
+        const sc = Math.max(.2, Math.min(1, box.clientWidth * Math.min(2, window.devicePixelRatio || 1) / W));
+        await draw(st.card, Object.assign({}, o, { scale: sc }), cv);
+        if (my !== st.token) return;
+        cv.classList.remove('hide');
+        const im = $('share-img'); if (im) im.style.visibility = 'hidden';   // gambar lama tidak tembus di kartu transparan
+      }
+      // PNG penuh untuk dibagikan dibuat di belakang setelah perubahan berhenti sebentar.
+      st.blobT = setTimeout(function () { makeBlob(my); }, cv ? 400 : 0);
       if (box) {
         box.classList.toggle('ink-dark', !(o.style === 'gelap' || o.style === 'terang' || o.style === 'aksen' || o.style === 'foto') && o.ink === 'hitam');
         box.classList.toggle('solid', o.style === 'gelap' || o.style === 'terang' || o.style === 'aksen' || o.style === 'foto');
       }
     }, 50);
   }
+  /** PNG penuh 1080 px untuk Bagikan / Simpan / Salin. Kembali: blob (atau null bila sudah tidak berlaku). */
+  async function makeBlob(my) {
+    if (!st.card) return null;
+    if (my == null) my = st.token;
+    const cnv = await draw(st.card, opts());
+    const blob = await new Promise(r => cnv.toBlob(r, 'image/png'));
+    if (my !== st.token || !blob) return null;
+    st.blob = blob; st.blobOk = true; if (st.url) URL.revokeObjectURL(st.url); st.url = URL.createObjectURL(blob);
+    const im = $('share-img'); if (im) im.src = st.url;
+    return blob;
+  }
+  async function ensureBlob() { if (st.blobOk && st.blob) return st.blob; clearTimeout(st.blobT); return (await makeBlob()) || st.blob; }
   // Pratinjau sebesar mungkin di ruang yang ada, rasio tepat (story, portrait, kotak).
   function fitBox() {
     const stage = $('share-stage'), box = $('share-box'); if (!stage || !box || !stage.clientHeight) return;
@@ -1589,7 +1615,7 @@
     const o = opts();
     if (P.fmt === 'hq') { o.scale = 2; const c = await draw(st.card, o); const b = await new Promise(r => c.toBlob(r, 'image/png')); return { blob: b, name: fname('png') }; }
     if (P.fmt === 'video') return recordVideo();
-    return { blob: st.blob, name: fname('png') };
+    return { blob: await ensureBlob(), name: fname('png') };
   }
   function videoType() {
     const c = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -1666,24 +1692,30 @@
     // Gambar biasa: blob sudah siap sebelum tombol ditekan (aktivasi pengguna tetap utuh untuk navigator.share).
     let files;
     if (st.tray.length) files = st.tray.map(t => ({ blob: t.blob, name: t.name }));
-    else if (P.fmt === 'png') { if (!st.blob) return; files = [{ blob: st.blob, name: fname('png') }]; }
+    else if (P.fmt === 'png') { const b = await ensureBlob(); if (!b) return; files = [{ blob: b, name: fname('png') }]; }
     else { const out = await renderOut(); if (!out || !out.blob) return; files = [out]; }
+    sendFiles(files, null);
+  };
+  /** Bagikan berkas lewat halaman pembungkus (bila ada) atau navigator.share; fallback = simpan bila pembungkus gagal. */
+  function sendFiles(files, fallback) {
+    st.fallback = fallback || null;
     if (st.host) {
       st.pending = setTimeout(function () { st.pending = null; shareInFrame(files); }, 1500);
       try { window.top.postMessage(files.length === 1 ? { xnk: 'share', blob: files[0].blob, name: files[0].name } : { xnk: 'share', files: files }, '*'); return; } catch (e) { clearTimeout(st.pending); }
     }
     shareInFrame(files);
-  };
+  }
   function shareInFrame(files) {
     const fl = files.map(f => new File([f.blob], f.name, { type: f.blob.type }));
     if (navigator.canShare && navigator.canShare({ files: fl })) navigator.share({ files: fl }).catch(function () {});
     else files.forEach(f => download(f.blob, f.name));
   }
-  window.shareCopy = function () {
-    if (!st.blob) return;
-    if (st.host) { try { window.top.postMessage({ xnk: 'copy', blob: st.blob }, '*'); return; } catch (e) {} }
-    try { navigator.clipboard.write([new ClipboardItem({ 'image/png': st.blob })]).then(function () { window.showToast('Disalin. Tempel di Story Instagram.'); }, function () { window.showToast('Salin tidak didukung. Pakai Simpan.'); }); } catch (e) { window.showToast('Salin tidak didukung. Pakai Simpan.'); }
-  };
+  window.shareCopy = async function () { copyBlob(await ensureBlob()); };
+  function copyBlob(blob) {
+    if (!blob) return;
+    if (st.host) { try { window.top.postMessage({ xnk: 'copy', blob: blob }, '*'); return; } catch (e) {} }
+    try { navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () { window.showToast('Disalin. Tempel di Story Instagram.'); }, function () { window.showToast('Salin tidak didukung. Pakai Simpan.'); }); } catch (e) { window.showToast('Salin tidak didukung. Pakai Simpan.'); }
+  }
   window.shareTrayAdd = async function () {
     if (st.tray.length >= 5) return;
     const out = await renderOut(); if (!out || !out.blob) return;
@@ -1696,7 +1728,7 @@
     if (window.top === window || e.source !== window.top) return;
     const d = e.data; if (!d || typeof d !== 'object') return;
     if (d.xnk === 'host') st.host = d.share === true;
-    else if (d.xnk === 'share-done') { clearTimeout(st.pending); st.pending = null; if (!d.ok) window.shareSave(); }
+    else if (d.xnk === 'share-done') { clearTimeout(st.pending); st.pending = null; const f = st.fallback; st.fallback = null; if (!d.ok) { if (f) f(); else window.shareSave(); } }
     else if (d.xnk === 'copy-done') window.showToast(d.ok ? 'Disalin. Tempel di Story Instagram.' : 'Salin tidak didukung. Pakai Simpan.');
   });
   document.addEventListener('keydown', function (e) {
@@ -1755,6 +1787,14 @@
     return true;
   };
   window.shareNudgeClose = function () { const el = $('share-nudge'); if (el) { el.classList.remove('show'); setTimeout(() => el.classList.add('hide'), 300); } };
+
+  // Fase AG: alat gambar untuk poster coach (parts/app/27-poster.part). Hanya dibaca; kartu bagikan tidak berubah.
+  window.shareKit = {
+    W: W, font: font, Tx: Tx, caps: caps, fit: fit, rrect: rrect, drawCover: drawCover, drawQr: drawQr, drawAvatar: drawAvatar, tinted: tinted,
+    loadFonts: loadFonts, logo: logo, qr: function (t) { return QR.make(t); }, download: download, sendFiles: sendFiles, copy: copyBlob,
+    // Tanda kecil di pojok poster: kosong di xnk.my.id; Library menggantinya dengan teks tanda (build-lib TEXT_SWAPS).
+    mark: function () { return ''; }
+  };
 
   // Untuk tools/share-check.js: gambar kartu tanpa lembar, ambil kotak tata letak dan QR.
   window.shareDraw = function (card, o) { return draw(card, o); };

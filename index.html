@@ -47,7 +47,7 @@
     gtag('config', 'G-93SRTYH3SG');
   </script>
 
-  <link rel="stylesheet" href="theme.05eaa7405a.css">
+  <link rel="stylesheet" href="theme.87469dea4a.css">
 </head>
 <body>
 
@@ -343,6 +343,7 @@
           <button type="button" class="action-tile" onclick="window.quickAction('client')"><span class="at-icon"><i data-lucide="user-plus"></i></span>Klien</button>
           <button type="button" class="action-tile" onclick="window.quickAction('coach')"><span class="at-icon"><i data-lucide="dumbbell"></i></span>Coach</button>
           <button type="button" class="action-tile" onclick="window.quickAction('content')"><span class="at-icon"><i data-lucide="megaphone"></i></span>Konten</button>
+          <button type="button" class="action-tile poster-tile" onclick="window.quickAction('poster')"><span class="at-icon"><i data-lucide="image"></i></span>Poster</button>
           <button type="button" class="action-tile fin-tile" onclick="window.finQuick('payment')"><span class="at-icon"><i data-lucide="banknote"></i></span>Pembayaran</button>
           <button type="button" class="action-tile fin-tile" onclick="window.finQuick('expense')"><span class="at-icon"><i data-lucide="receipt"></i></span>Pengeluaran</button>
         </div>
@@ -813,6 +814,17 @@
       </form>
     </div>
 
+    <!-- Fase AF: fitur di luar paket coach -->
+    <div class="sheet sm hide" id="sheet-plan" role="dialog" aria-modal="true" aria-labelledby="pl-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-head"><h2 class="sheet-title" id="pl-title">Tersedia di Pro</h2><button type="button" class="icon-btn plain" onclick="window.closeModal()" aria-label="Tutup"><i data-lucide="x"></i></button></div>
+      <div class="sheet-body stack" style="gap:12px">
+        <p class="li-sub" id="pl-sub"></p>
+        <a class="btn btn-primary btn-block hide" id="pl-wa" href="#" target="_blank" rel="noopener"><i data-lucide="message-circle"></i> Tanya via WhatsApp</a>
+        <button type="button" class="btn btn-ghost btn-block" onclick="window.closeModal()">Tutup</button>
+      </div>
+    </div>
+
     <!-- Fase AE: pilih / pindah coach klien (hanya pemilik) -->
     <div class="sheet sm hide" id="sheet-mcoach" role="dialog" aria-modal="true" aria-labelledby="mc-title">
       <div class="sheet-handle"></div>
@@ -1043,6 +1055,9 @@
       <div class="sheet-foot" id="share-foot"></div>
     </div>
 
+    <!-- Fase AG: poster coach (isi dibuat oleh parts/app/27-poster.part) -->
+    <div class="sheet tall hide" id="sheet-poster" role="dialog" aria-modal="true" aria-labelledby="po-title"></div>
+
     <!-- Progres: lihat satu foto -->
     <div class="sheet tall hide" id="sheet-photo-view" role="dialog" aria-modal="true" aria-labelledby="pg-view-title">
       <div class="sheet-handle"></div>
@@ -1130,7 +1145,7 @@
   <input type="file" id="pub-avatar-input" accept="image/*" class="sr-only" aria-label="Pilih foto profil">
 
   <script src="scripts.893be8a4ca.js"></script>
-  <script src="app.c0d9112541.js"></script>
-  <script src="bagikan.8f446518cd.js"></script>
+  <script src="app.061ea91157.js"></script>
+  <script src="bagikan.bc6fac2300.js"></script>
 </body>
 </html>
